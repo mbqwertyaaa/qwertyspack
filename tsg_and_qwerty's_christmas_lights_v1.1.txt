@@ -1,0 +1,497 @@
+@name tSG and qwerty's Christmas Lights v1.1
+@inputs On Sequence1 Sequence2 FlagRG FlagRGYB FlagY FlagDisableShading FlagEnd FlagOtherEnd
+@outputs Flag
+@persist Step StepAcc X  A B Spawned [TableR TableG TableY TableB]:array [StrandM LightM]:string
+@persist [StrandCol Ron Rof Gon Gof Yon Yof Bon Bof Won Wof LightBaseScale LightBulbScale]:vector
+@persist StrandScale Scale LightNum LightBaseH LightBulbH Timing AngMax AngMin Length LightGap 
+@persist RGYB 
+#[                        ////  Changelog ////
+    * Upcoming features: Generator with chat commands to use with Prop2Mesh.
+v1.1
+    + Scaling factor to change overall scale.
+    + Optimisation: If Sequences are not flagged (wired), the interval stops. Previously Timing was just set extremely high.
+    + Default values in comments.
+    / Spawning timer increased from 500ms to 1000ms.
+]#
+#[Inputs:
+    On: On.
+    Sequence1: Alternating on and off, every other light.
+    Sequence2: Only for RGYB. Combine with Sequence 1 and you get the inverse of this sequence.
+Flags:
+    Wire one of the color inputs to the Flag output, then reset the e2.
+    FlagRG:   Red and Green lights.
+    FlagRGYB: Red, Green, Yellow, and Blue lights. 
+    FlagY:    White lights.
+    FlagDisableShading: Turn all inputs off, then change this.
+    FlagEnd moves one end of the strand to the e2.
+    Reset the e2 after changing any flags.
+]#
+if(first()|duped()|dupefinished()){
+#Customize these variables
+#Overall Scale
+Scale=1
+#Length in Hammer Units, centered.
+Length=250 #Default: 250
+
+#Amount of bow or sag in the strand. 0 is none, 0.25 is a lot.
+Bow=0.15 #Default: 0.15
+#Light gap. This will change with the bow and length variables. Just play with it to get it right.
+LightGap=3.5 #Default: 3.5
+
+#Light sequence timing in seconds. Keep it above 1.5.
+Timing=1.5 #Default: 1.5
+
+#Angle Randomizer. AngMin can be set to 0 to have one side flat.
+AngMax=45 #Default: 45
+AngMin=-AngMax #Default: -AngMax
+
+#Strand customization:
+StrandM="models/proppertextures/acrylic_metal1_grimey" #Default: "models/proppertextures/acrylic_metal1_grimey"
+StrandCol=vec(26,102,42) #Default: vec(26,102,42)
+StrandScale = 0.3 #Default: 0.3
+
+#Light base customization:
+LightBaseScale=vec(0.5) #Default: vec(0.5)
+LightBaseH=3 #Default: 3
+
+#Light bulb customization:
+LightM="models/proppertextures/acrylic"
+LightBulbScale=vec(0.15,0.15,0.5) #Default: vec(0.15,0.15,0.5)
+LightBulbH=1.5 #Default: 1.5
+
+#Light Colors. The off (of) color is generated from the on color, but feel free to change that. 
+OfSet=-130 if(FlagDisableShading){OnSet=20}else{OnSet=-20}
+Ron = vec(230,12,12)+OnSet
+Rof = Ron+OfSet
+Gon = vec(12,230,12)+OnSet
+Gof = Gon+OfSet
+Yon = vec(230,161,21)+OnSet
+Yof = Yon+OfSet
+Bon = vec(15,115,230)+OnSet
+Bof = Bon+OfSet
+Won = vec(230,206,129)+OnSet
+Wof = vec(64,57,43)
+
+#Do not change anything past this line.
+
+Flag=1
+if(FlagOtherEnd){
+    FlagEnd=-1
+}
+if(entity():parent()){
+    entity():setAlpha(0)
+}
+Step=0.05 #Step for making the strands.
+StepAcc=-Step #
+Length=Length*Scale
+Bow=Length*Bow #Scales the bow amount from length
+Timing=Timing*1000 #Calculates from seconds to miliseconds
+
+TableR=array()
+TableG=array()
+TableY=array()
+TableB=array()
+holoCreate(1)
+holoParent(1,entity())
+holoPos(1,entity():toWorld(vec((Length/2)+(Length/2)*FlagEnd,0,0)))
+holoAng(1,entity():toWorld(ang(0,0,0)))
+
+holoCreate(2)
+holoParent(2,entity())
+holoPos(2,entity():toWorld(vec((-Length/2)+(Length/2)*FlagEnd,0,0)))
+holoAng(2,entity():toWorld(ang(0,0,0)))
+
+holoCreate(3)
+holoParent(3,entity())
+holoPos(3,entity():toWorld(vec((Length/2)*FlagEnd,0,-Bow)))
+holoAng(3,entity():toWorld(ang(0,0,0)))
+holoAlpha(1,0)
+holoAlpha(2,0)
+holoAlpha(3,0)#models/weapons/c_models/c_flamethrower/c_flamethrower_festivizer.mdl
+X=3
+timer("Spawn",250)
+#Sequence functions, and on/off functions below them
+function void seqRG(A,Seq1){
+    if(A==1){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Seq1? Ron : Rof)
+            holoColor(TableG[N,string]:toNumber(),Gof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),!(Seq1?:0))
+            }
+        }
+    }
+    if(A==0){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Rof)
+            holoColor(TableG[N,string]:toNumber(),Seq1? Gon : Gof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(Seq1?:0))
+            }
+        }
+    }
+
+}
+function void rg(On){
+    
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),(On ? Ron : Rof))
+            holoColor(TableG[N,string]:toNumber(),(On ? Gon : Gof))
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(On?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(On?:0))
+        }
+        }
+    
+}
+function void seq1RGYB(A,B,Seq1){
+    if(A==1){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Seq1? Ron : Rof)
+            holoColor(TableG[N,string]:toNumber(),Gof)
+            holoColor(TableY[N,string]:toNumber(),Seq1? Yon : Yof)
+            holoColor(TableB[N,string]:toNumber(),Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),!(Seq1?:0))
+        }
+        }
+    }
+    if(A==0){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Rof)
+            holoColor(TableG[N,string]:toNumber(),Seq1? Gon : Gof)
+            holoColor(TableY[N,string]:toNumber(),Yof)
+            holoColor(TableB[N,string]:toNumber(),Seq1? Bon : Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),(Seq1?:0))
+        }
+        }
+    }
+
+}
+function void seq2RGYB(A,B,Seq1){
+    if(A==1&B==1){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Seq1? Ron : Rof)
+            holoColor(TableG[N,string]:toNumber(),Gof)
+            holoColor(TableY[N,string]:toNumber(),Yof)
+            holoColor(TableB[N,string]:toNumber(),Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),!(Seq1?:0))
+        }
+        }
+    }
+    if(A==0&B==1){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Rof)
+            holoColor(TableG[N,string]:toNumber(),Seq1? Gon : Gof)
+            holoColor(TableY[N,string]:toNumber(),Yof)
+            holoColor(TableB[N,string]:toNumber(),Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),!(Seq1?:0))
+        }
+        }
+    }
+    if(A==1&B==0){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Rof)
+            holoColor(TableG[N,string]:toNumber(),Gof)
+            holoColor(TableY[N,string]:toNumber(),Seq1? Yon : Yof)
+            holoColor(TableB[N,string]:toNumber(),Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),!(Seq1?:0))
+        }
+        }
+    }
+    if(A==0&B==0){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Rof)
+            holoColor(TableG[N,string]:toNumber(),Gof)
+            holoColor(TableY[N,string]:toNumber(),Yof)
+            holoColor(TableB[N,string]:toNumber(),Seq1? Bon : Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),(Seq1?:0))
+        }
+        }
+    }
+
+}
+function void seq3RGYB(A,B,Seq1){
+    if(A==1&B==1){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Rof)
+            holoColor(TableG[N,string]:toNumber(),Seq1? Gon : Gof)
+            holoColor(TableY[N,string]:toNumber(),Seq1? Yon : Yof)
+            holoColor(TableB[N,string]:toNumber(),Seq1? Bon : Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),(Seq1?:0))
+        }
+        }
+    }
+    if(A==0&B==1){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Seq1? Ron : Rof)
+            holoColor(TableG[N,string]:toNumber(),Gof)
+            holoColor(TableY[N,string]:toNumber(),Seq1? Yon : Yof)
+            holoColor(TableB[N,string]:toNumber(),Seq1? Bon : Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),(Seq1?:0))
+        }
+        }
+    }
+    if(A==1&B==0){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Seq1? Ron : Rof)
+            holoColor(TableG[N,string]:toNumber(),Seq1? Gon : Gof)
+            holoColor(TableY[N,string]:toNumber(),Yof)
+            holoColor(TableB[N,string]:toNumber(),Seq1? Bon : Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),(Seq1?:0))
+        }
+        }
+    }
+    if(A==0&B==0){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Seq1? Ron : Rof)
+            holoColor(TableG[N,string]:toNumber(),Seq1? Gon : Gof)
+            holoColor(TableY[N,string]:toNumber(),Seq1? Yon : Yof)
+            holoColor(TableB[N,string]:toNumber(),Bof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),!(Seq1?:0))
+        }
+        }
+    }
+
+}
+
+function void rgyb(On){
+    
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),(On ? Ron : Rof))
+            holoColor(TableG[N,string]:toNumber(),(On ? Gon : Gof))
+            holoColor(TableY[N,string]:toNumber(),(On ? Yon : Yof))
+            holoColor(TableB[N,string]:toNumber(),(On ? Bon : Bof))
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(On?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(On?:0))
+            holoDisableShading(TableY[N,string]:toNumber(),(On?:0))
+            holoDisableShading(TableB[N,string]:toNumber(),(On?:0))
+        }
+        }
+    
+}
+function void seqY(A,Seq1){
+    if(A==1){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Seq1? Won : Wof)
+            holoColor(TableG[N,string]:toNumber(),Wof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),!(Seq1?:0))
+            }
+        }
+    }
+    if(A==0){
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),Wof)
+            holoColor(TableG[N,string]:toNumber(),Seq1? Won : Wof)
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),!(Seq1?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(Seq1?:0))
+            }
+        }
+    }
+
+}
+function void yy(On){
+    
+        for(N=1,21){
+            holoColor(TableR[N,string]:toNumber(),(On ? Won : Wof))
+            holoColor(TableG[N,string]:toNumber(),(On ? Won : Wof))
+            if(!FlagDisableShading){
+            holoDisableShading(TableR[N,string]:toNumber(),(On?:0))
+            holoDisableShading(TableG[N,string]:toNumber(),(On?:0))
+        }
+        }
+    
+}
+
+}
+
+#interval(1000)
+
+if(clk("Spawn")&StepAcc<1){
+StepAcc=StepAcc+Step
+X=X+1
+RGYB++
+Prev= bezier(holoEntity(1):pos(),holoEntity(3):pos(),holoEntity(2):pos(),StepAcc+Step)#  
+Next= bezier(holoEntity(1):pos(),holoEntity(3):pos(),holoEntity(2):pos(),StepAcc-Step)#  
+CurvePos = bezier(holoEntity(1):pos(),holoEntity(3):pos(),holoEntity(2):pos(),StepAcc)#  
+holoCreate(X)
+holoPos(X,CurvePos)
+holoAng(X,(((Prev) - (Next)):toAngle() *1)+ang(0,0,0))  
+holoAlpha(X,0)
+
+X++
+holoCreate(X)
+holoPos(X,holoEntity(X-1):toWorld(vec(0,0,0)*Scale))
+holoAng(X,holoEntity(X-1):toWorld(ang(0,90,90)))
+holoModel(X,"models/sprops/cylinders/size_2/cylinder_3x12.mdl")
+holoScale(X,vec(StrandScale*Scale,StrandScale*Scale,(holoEntity(1):pos():distance(holoEntity(3):pos()))*0.0085))
+holoParent(X,entity())
+holoMaterial(X,StrandM)
+holoColor(X,StrandCol)
+
+X++
+holoCreate(X)
+local Ang = randint(AngMin,AngMax)
+holoPos(X,holoEntity(X-2):toWorld(vec(-LightGap,sin(Ang)*LightBaseH,-cos(Ang)*LightBaseH)*Scale))
+holoAng(X,holoEntity(X-2):toWorld(ang(0,0,Ang)))
+holoModel(X,"models/sprops/misc/domes/size_0/dome_3x6.mdl")
+holoScale(X,LightBaseScale*Scale)
+holoParent(X,entity())
+holoMaterial(X,StrandM)
+holoColor(X,StrandCol)
+
+X++
+holoCreate(X)
+local Ang = randint(AngMin,AngMax)
+holoPos(X,holoEntity(X-3):toWorld(vec(LightGap,sin(Ang)*LightBaseH,-cos(Ang)*LightBaseH)*Scale))
+holoAng(X,holoEntity(X-3):toWorld(ang(0,0,Ang)))
+holoModel(X,"models/sprops/misc/domes/size_0/dome_3x6.mdl")
+holoScale(X,LightBaseScale*Scale)
+holoParent(X,entity())
+holoMaterial(X,StrandM)
+holoColor(X,StrandCol)
+
+X++
+holoCreate(X)
+holoPos(X,holoEntity(X-2):toWorld(vec(0,0,-LightBulbH)*Scale))
+holoAng(X,holoEntity(X-2):toWorld(ang(0,0,0)))
+holoModel(X,"models/sprops/geometry/sphere_9.mdl")
+holoScale(X,LightBulbScale*Scale)
+holoParent(X,entity())
+holoMaterial(X,LightM)
+
+if(FlagRG|FlagY){
+    TableR:pushString((X):toString())
+}
+if(FlagRGYB){
+    if(RGYB%2==0){ #Detects if the index is even or odd
+    TableR:pushString((X):toString())
+    }
+    else{
+    TableY:pushString((X):toString())
+    }
+}
+
+X++
+holoCreate(X)
+holoPos(X,holoEntity(X-2):toWorld(vec(0,0,-LightBulbH)*Scale))
+holoAng(X,holoEntity(X-2):toWorld(ang(0,0,0)))
+holoModel(X,"models/sprops/geometry/sphere_9.mdl")
+holoScale(X,LightBulbScale*Scale)
+holoParent(X,entity())
+holoMaterial(X,LightM)
+
+if(FlagRG|FlagY){
+    TableG:pushString((X):toString())
+}
+if(FlagRGYB){
+    if(RGYB%2==0){ #Detects if the index is even or odd
+    TableG:pushString((X):toString())
+    }
+    else{
+    TableB:pushString((X):toString())
+        }
+    
+}
+
+timer("Spawn",1000)
+if(FlagRG|FlagY){
+#print(TableR:count())
+#print(TableG:count())
+}
+if(FlagRGYB){
+#print(TableR:count())
+#print(TableG:count())
+#print(TableY:count())
+#print(TableB:count())
+#print(RGYB)
+}
+
+}
+if(StepAcc==1&Spawned==0){Spawned=1}
+if(Sequence1|Sequence2){interval(Timing)}
+
+
+if(Spawned==1){
+    A=!A if(A){B=!B}
+    
+if(FlagRG){ #Select different sequences based on the flag color
+    
+    if(Sequence1){
+        seqRG(A,On)
+    }
+    else{
+        rg(On)
+    }
+}
+if(FlagY){ #Select different sequences based on the flag color
+    
+    if(Sequence1){
+        seqY(A,On)
+    }
+    else{
+        yy(On)
+    }
+}
+if(FlagRGYB){ #Select different sequences based on the flag color
+    
+    if(Sequence1&!Sequence2){
+        seq1RGYB(A,B,On)
+    }
+    elseif(!Sequence1&Sequence2){
+        seq3RGYB(A,B,On)
+    }
+    elseif(Sequence1&Sequence2){
+         seq2RGYB(A,B,On)
+    }
+    else{
+        rgyb(On)
+    }
+}
+
+}
