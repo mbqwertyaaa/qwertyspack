@@ -8,9 +8,9 @@ Pack of public e2s
 - Red and Green  
 - Red, Green, Yellow, and Blue  
 - White  
-### There are also a couple of sequences that they can run!
-- The RG, RGYB and W can be on, off, and an alternating pattern.
-- The RGYB are special, and have two extra sequences. 3 moving lights and 1 moving light.
+### There are also a couple of sequences that they can run:
+- Every-other light blinks.
+- 3 moving lights with a gap, and 1 moving light with a 3 light gap.
 ### Upcoming Features:
  - Commands to generate the p2m mesh automatically.
 
