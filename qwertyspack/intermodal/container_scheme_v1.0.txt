@@ -1,0 +1,194 @@
+@name container_scheme_v1.0
+@inputs 
+@outputs 
+@persist Container:entity Scheme:table
+@trigger 
+#Made by qwertyaaa for the Intermodal Pack. https://github.com/mbqwertyaaa/qwertyspack/
+#[
+                        ////  Changelog ////
+v1.0
+    + All of Magnum's, Patman's, and Caloco's container textures.
+    + Automatically choose between schemes.
+    + Set address using Mat=""
+]#
+if(first()|dupefinished()){
+    Mat="" #Set this to one of the scheme addresses below to always get a specific one. 
+    
+    
+#Don't change anything past here if you don't know what you're doing.
+Scheme = table()
+#Magnum's default mats
+Scheme["appn",array]=array("models/proppertextures/","40","20")
+Scheme["c17n",array]=array("models/proppertextures/","40","20")
+Scheme["eastern",array]=array("models/proppertextures/","40","20")
+Scheme["fcn",array]=array("models/proppertextures/","40","20")
+Scheme["iw",array]=array("models/proppertextures/","40","20")
+Scheme["jbhunt",array]=array("models/proppertextures/","40","20")
+Scheme["maersk",array]=array("models/proppertextures/","40","20")
+Scheme["na",array]=array("models/proppertextures/","40","20")
+Scheme["nam",array]=array("models/proppertextures/","40","20")
+Scheme["otp",array]=array("models/proppertextures/","40","20")
+Scheme["pgr",array]=array("models/proppertextures/","40","20")
+Scheme["schneider",array]=array("models/proppertextures/","40","20")
+Scheme["techr",array]=array("models/proppertextures/","40","20")
+#Caloco's mats
+Scheme["branchwood_valley_and_rockfort",array]=array("containers/bvar/","40ft","20ft")
+Scheme["ccsd/",array]=array("containers/","40","20")
+Scheme["dc_rail_works",array]=array("containers/dcrw/","40ft","20ft")
+Scheme["grampains_and_south_western",array]=array("containers/gasw/","40ft","20ft")
+Scheme["rustys_rails",array]=array("containers/rura/","40ft","20ft")
+#Patman's mats
+Scheme["abf",array]=array("models/patman/containers/","40")
+Scheme["acl",array]=array("models/patman/containers/","40","20")
+Scheme["adu",array]=array("models/patman/containers/","40")
+Scheme["alliedwaste",array]=array("models/patman/containers/","40")
+Scheme["amazonprime",array]=array("models/patman/containers/","40")
+Scheme["apl",array]=array("models/patman/containers/","40","20")
+Scheme["axsun",array]=array("models/patman/containers/","40")
+Scheme["bn",array]=array("models/patman/containers/","40")
+Scheme["bnsf",array]=array("models/patman/containers/","40")
+Scheme["bushnell",array]=array("models/patman/containers/","40")
+Scheme["cai",array]=array("models/patman/containers/","40","20")
+Scheme["capital",array]=array("models/patman/containers/","40","20")
+Scheme["cast",array]=array("models/patman/containers/","40","20")
+Scheme["cdntire",array]=array("models/patman/containers/","40")
+Scheme["charged",array]=array("models/patman/containers/","40")
+Scheme["chemso",array]=array("models/patman/containers/","40")
+Scheme["chrobinson",array]=array("models/patman/containers/","40")
+Scheme["cmacgm",array]=array("models/patman/containers/","40","20")
+Scheme["conrail_48",array]=array("models/patman/containers/","")
+Scheme["conrail_53",array]=array("models/patman/containers/","")
+Scheme["cosco",array]=array("models/patman/containers/","40","20")
+Scheme["cp",array]=array("models/patman/containers/","40")
+Scheme["cpships",array]=array("models/patman/containers/","40","20")
+#Scheme["cpships_alt",array]=array("models/patman/containers/","40_alt","20_alt")
+Scheme["crowley",array]=array("models/patman/containers/","40","20")
+#Scheme["crowley_53",array]=array("models/patman/containers/","")
+Scheme["cs",array]=array("models/patman/containers/","40","20")
+Scheme["csx",array]=array("models/patman/containers/","40")
+Scheme["ctn",array]=array("models/patman/containers/","40")
+Scheme["dart",array]=array("models/patman/containers/","40")
+Scheme["deboer",array]=array("models/patman/containers/","40")
+Scheme["dhl",array]=array("models/patman/containers/","40")
+Scheme["dong",array]=array("models/patman/containers/","40","20")
+Scheme["fec",array]=array("models/patman/containers/","40")
+Scheme["fedex",array]=array("models/patman/containers/","40")
+Scheme["florens",array]=array("models/patman/containers/","40","20")
+Scheme["geseaco",array]=array("models/patman/containers/","40","20")
+Scheme["hanjin",array]=array("models/patman/containers/","40","20")
+Scheme["hl",array]=array("models/patman/containers/","40","20")
+Scheme["horizon",array]=array("models/patman/containers/","40")
+Scheme["hs",array]=array("models/patman/containers/","40_alt","20_alt")
+Scheme["hub",array]=array("models/patman/containers/","40")
+Scheme["hyundai",array]=array("models/patman/containers/","40","20")
+Scheme["kline",array]=array("models/patman/containers/","40","20")
+Scheme["marten",array]=array("models/patman/containers/","40")
+Scheme["mol",array]=array("models/patman/containers/","40","20")
+Scheme["msc",array]=array("models/patman/containers/","40","20")
+Scheme["nol",array]=array("models/patman/containers/","40","20")
+Scheme["np",array]=array("models/patman/containers/","40")
+Scheme["nyk",array]=array("models/patman/containers/","40","20")
+Scheme["one",array]=array("models/patman/containers/","40","20")
+Scheme["oocl",array]=array("models/patman/containers/","40","20")
+Scheme["pil",array]=array("models/patman/containers/","40","20")
+Scheme["po",array]=array("models/patman/containers/","40","20")
+Scheme["poned",array]=array("models/patman/containers/","40","20")
+Scheme["republic",array]=array("models/patman/containers/","40")
+Scheme["safmarine",array]=array("models/patman/containers/","40","20")
+Scheme["santafe",array]=array("models/patman/containers/","40")
+Scheme["scrops",array]=array("models/patman/containers/","40")
+Scheme["sealand",array]=array("models/patman/containers/","40")
+Scheme["sellgoods",array]=array("models/patman/containers/","40")
+Scheme["senator",array]=array("models/patman/containers/","40")
+Scheme["sp",array]=array("models/patman/containers/","40")
+Scheme["swift",array]=array("models/patman/containers/","40")
+Scheme["tex",array]=array("models/patman/containers/","40","20")
+Scheme["tmm",array]=array("models/patman/containers/","40")
+Scheme["transtack",array]=array("models/patman/containers/","40","20")
+Scheme["triplecrown",array]=array("models/patman/containers/","40")
+Scheme["triton",array]=array("models/patman/containers/","40","20")
+Scheme["tropical",array]=array("models/patman/containers/","40","20")
+Scheme["uasc",array]=array("models/patman/containers/","40","20")
+Scheme["umax",array]=array("models/patman/containers/","40")
+Scheme["uniglory",array]=array("models/patman/containers/","40","20")
+Scheme["wallbert",array]=array("models/patman/containers/","40")
+Scheme["wanhai",array]=array("models/patman/containers/","40","20")
+Scheme["xines",array]=array("models/patman/containers/","40","20")
+Scheme["xpo",array]=array("models/patman/containers/","40")
+Scheme["yangming",array]=array("models/patman/containers/","40","20")
+Scheme["yrc",array]=array("models/patman/containers/","40")
+Scheme["zim",array]=array("models/patman/containers/","40","20")
+
+#Breakdown:
+#models/proppertextures/appn_base
+#models/proppertextures/appn_40
+#models/proppertextures/appn_20
+# These are the different textures this container has.
+# "appn" is the "address". "models/proppertextures/" is the folder the address is found in.
+# Scheme["appn",array]=array("models/proppertextures/","40","20")
+#The next entries define if the material has a 40ft and 20ft version and what that part looks like. If no 20ft texture exists, do not include it.
+
+#Prints useful information. If you are adding material entries, please send them to me so I can include them in the official release.
+Debug=0
+#Gets the container entity.
+if(entity():isWeldedTo():isValid()){Container = entity():isWeldedTo() if(Debug){print(Container:model())}}
+#Self Destructs if no entity is detected.
+    if(!entity():isWeldedTo():isValid()){
+        print("Place on a container. Self Destructing.")
+        selfDestruct()
+    }
+
+if(((Container:model():explode("_"))[2,string]:left(2))=="20"){
+    C20=1 if(Debug){print("20ft")}} 
+if(((Container:model():explode("_"))[3,string]:left(2))=="hc"){
+HC=1 if(Debug){print("HC")}}
+
+if(((Container:model():explode("_"))[4,string]:left(6))=="smooth"){
+Smooth=1 if(Debug){print("Smooth")}}
+
+if(((Container:model():explode("_"))[3,string]:left(7))=="opentop"){
+    Container:setBodygroup(3,randint(0,3))
+Opentop=1 if(Debug){print("Opentop")}}
+    
+if(((Container:model():explode("_"))[3,string]:left(4))=="bulk"){
+Bulk=1 if(Debug){print("Bulk")}}
+    
+if(((Container:model():explode("_"))[1,string]:right(4))=="tank"){
+Tank=1 if(Debug){print("Tank")}}
+    
+
+Container:setBodygroup(1,1)
+Container:setSkin(1)
+switch(randint(0,10)){
+default,
+
+break
+case 1,
+break
+}
+Keys = Scheme:keys()
+if(Mat==""){Mat = Keys[randint(1,Scheme:count()),string]}
+Array = Scheme[Mat,array]
+if(Bulk){if(Array[2,string]:right(4)=="_alt"){Container:setSubMaterial(1+HC,Array[1,string]+Mat+"_base_alt")}
+else{Container:setSubMaterial(1+HC,Array[1,string]+Mat+"_base")}
+print("Finished. Reporting Mark: "+Mat)
+timer("delete",1000)
+}
+else{
+
+if(C20&Array[3,string]:left(2)!="20"){print("Resetting. This material did not have a 20ft version.") timer("reset",500)}
+else{
+if(Array[2,string]:right(4)=="_alt"){Container:setSubMaterial(7+HC,Array[1,string]+Mat+"_base_alt")}
+else{Container:setSubMaterial(7+HC,Array[1,string]+Mat+"_base")}
+
+if(Array[2,string]==""){Container:setSubMaterial(8+HC,Array[1,string]+Mat+""+Array[2+C20,string])}
+else{Container:setSubMaterial(8+HC,Array[1,string]+Mat+"_"+Array[2+C20,string])
+}
+if(Debug){print(Array[1,string]+Mat+"_"+Array[2+C20,string])}
+print("Finished. Reporting Mark: "+Mat)
+timer("delete",1000)
+}
+}
+}
+if(clk("reset")){reset()}
+if(clk("delete")){selfDestruct()}
