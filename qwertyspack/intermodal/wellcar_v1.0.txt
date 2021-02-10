@@ -1,0 +1,193 @@
+@name wellcar_v1.0
+@inputs [Base B1 B2]:entity
+@outputs 
+@persist BaseSize Ang Debug [SglConPos DblCon1Pos DblCon2Pos H DblH B HCPos]:vector HC Controls:table [Containers Bogies Size]:array Check Key
+@persist
+@model
+#Made by qwertyaaa for the Intermodal Pack. https://github.com/mbqwertyaaa/qwertyspack/
+#[
+                        ////  Changelog ////
+v1.0
+    + Load containers onto one of Magnum's wellcars.
+    + Controls can be customized.
+]#
+#[Instructions:
+1. Place on a wellcar and wire Base to the wellcar, then wire at least one bogie to the e2, starting with B1.
+2. Use the controls listed below to load and unload the car while looking at the base prop.
+3. Enjoy
+]#
+if(first() | dupefinished()){
+#Settings
+Debug=0
+Controls["Load",string]="H"
+Controls["BrakeRelease",string]="R"
+
+#Don't change anything past here if you don't know what you're doing.
+SglConPos=vec(0,0,-22)
+DblCon1Pos=vec(0,120,-22)
+DblCon2Pos=vec(0,-120,-22)
+DblH = vec(0,0,104.5)
+H=vec(0,0,104/2)
+HCPos = vec(0,0,12)
+HC=0
+Check=1
+Ang=0
+if(entity():isWeldedTo():isValid()){
+    Base = entity():isWeldedTo()
+    entity():parentTo(Base)
+}
+if(entity():parent():isValid()){
+    Base = entity():parent()
+    entity():setAlpha(0)
+}
+
+for(I=1,4){noCollideAll(Base:isWeldedTo(I),0) Base:isWeldedTo(I):propFreeze(0)
+}
+for(I=1,Bogies:count()){Bogies[I,entity]:propPhysicalMaterial("gmod_ice")}
+
+BaseSize = Base:model():explode("_")[2,string]:left(2):toNumber()
+if(Debug){print("Base size: "+BaseSize)}
+Base:constraintBreak("weld") noCollideAll(Base,0)
+
+function void key(){Check=0 timer("key",500)}
+
+function number isInRangeAng(Min:number,Max:number,Ent:entity){
+    local Num = abs(Base:toLocal(Ent:angles()):yaw())
+    if(Num<Max&Num>Min){return 1}
+    else{return 0}
+}
+function number isInRange(Min:number,Max:number,Num:number){
+    if(Num<=Max&Num>=Min){return 1}
+    else{return 0}
+}
+function number conSet(Ent:entity){
+    Ent:setMass(1000)
+    weld(Base,Ent)
+    noCollideAll(Ent,1)
+    Ent:propFreeze(0)
+    if(Ent:isWeldedTo()){return 1} else{return 0}
+}
+function void loadContainer(ContainerNum:number,Range:number,ConPos:vector){
+    local RangeOffset = 180
+    if(isInRangeAng(-Range+Ang,Range+Ang,Containers[ContainerNum,entity])){
+                Containers[ContainerNum,entity]:propFreeze(1)
+                Containers[ContainerNum,entity]:setAng(Base:toWorld(ang(0,Ang,0)))
+                Containers[ContainerNum,entity]:setPos(Base:toWorld(ConPos))
+                
+    if(conSet(Containers[ContainerNum,entity])){if(Debug){print("Connected: "+Containers[ContainerNum,entity]:id()+" "+abs(Base:toLocal(Containers[ContainerNum,entity]:angles()):yaw()))}}
+            }
+                if(isInRangeAng(-Range+Ang+RangeOffset,Range+Ang+RangeOffset,Containers[ContainerNum,entity])){
+                Containers[ContainerNum,entity]:propFreeze(1)
+                Containers[ContainerNum,entity]:setAng(Base:toWorld(ang(0,Ang+RangeOffset,0)))
+                Containers[ContainerNum,entity]:setPos(Base:toWorld(ConPos))
+    if(conSet(Containers[ContainerNum,entity])){if(Debug){print("Connected: "+Containers[ContainerNum,entity]:id()+" "+abs(Base:toLocal(Containers[ContainerNum,entity]:angles()):yaw()))}}
+            }
+}
+function void container(Entity:entity){
+    local Max=50
+    
+    Containers=array()
+    findIncludeModel("container")
+    findExcludeModel(Base:model())
+    findExcludeModel("sprops")
+    findIncludeClass("prop_physics")
+    
+    findInSphere(Entity:toWorld(DblCon1Pos+H),Max)
+    Containers[1,entity]=findResult(1)
+    findExcludeEntity(Containers[1,entity])
+    if(Containers[1,entity]:model():explode("_")[3,string]:left(2)=="hc"){
+        HC=1
+    }else{HC=0}
+    if(Containers[1,entity]:model():explode("_")[2,string]:left(2):toNumber()==20){
+    findInSphere(Entity:toWorld(DblCon2Pos+H),Max)
+    Containers[2,entity]=findResult(1)
+    findExcludeEntity(Containers[2,entity])
+    }
+    
+    findInSphere(Entity:toWorld(DblCon1Pos+DblH+H+(HCPos*HC)),Max)
+    Containers[3,entity]=findResult(1)
+    findExcludeEntity(Containers[3,entity])
+    
+    if(Containers[3,entity]:model():explode("_")[2,string]:left(2):toNumber()==20){
+    findInSphere(Entity:toWorld(DblCon2Pos+DblH+H),Max)
+    Containers[4,entity]=findResult(1)
+    }
+    findClearBlackEntityList()
+    
+    Size = array(Containers[1,entity]:model():explode("_")[2,string]:left(2):toNumber(),
+    Containers[2,entity]:model():explode("_")[2,string]:left(2):toNumber(),
+    Containers[3,entity]:model():explode("_")[2,string]:left(2):toNumber(),
+    Containers[4,entity]:model():explode("_")[2,string]:left(2):toNumber())
+    if(Debug){print("Ent ID: "+Containers[1,entity]:id()+" "+Containers[2,entity]:id()+" "+Containers[3,entity]:id()+" "+Containers[4,entity]:id()) print("Container Size: "+Size[1,number]+" "+Size[2,number]+" "+Size[3,number]+" "+Size[4,number])}
+    
+        if(isInRange(40,BaseSize,Size[1,number])&!Size[2,number]){loadContainer(1,10,SglConPos)}
+        else{
+            if(Size[1,number]==20){
+                loadContainer(1,10,DblCon1Pos)}
+            if(Size[2,number]==20){
+                loadContainer(2,10,DblCon2Pos)}
+        }
+        if(((Size[1,number]==20&Size[2,number]==20)|isInRange(40,BaseSize,Size[1,number]))&Size[3,number]>20){
+            loadContainer(3,10,SglConPos+DblH+(HCPos*HC))
+        }
+        if(((Size[1,number]==20&Size[2,number]==20)|isInRange(40,BaseSize,Size[1,number]))&Size[3,number]==20){
+            loadContainer(3,10,DblCon1Pos+DblH+(HCPos*HC))
+        }
+        if(((Size[1,number]==20&Size[2,number]==20)|isInRange(40,BaseSize,Size[1,number]))&Size[4,number]==20){
+            loadContainer(4,10,DblCon2Pos+DblH+(HCPos*HC))
+        }
+        if((Size[1,number]+Size[2,number]+Size[3,number]+Size[4,number])>0){noCollideAll(Base,1) Base:propFreeze(0) Container=1 timer("container",10)    
+        }
+        else{Container=1 timer("uncontainer",10) print("Failed to find and load containers.")}
+}
+
+function void uncontainer(Entity:entity){
+    if(Base:hasConstraints("weld")){
+        print("Disconnected.")
+        Container=1
+        timer("uncontainerd",10)
+    }
+    else{
+        print("Connecting.")
+    container(Entity)
+    }
+}
+if(entity():hasConstraints("weld")){ entity():parentTo(entity():isWeldedTo())}
+    runOnKeys(owner(),1)
+if(!B1:isValid()){ print("Wire at least one truck.") }
+else{Bogies[1,entity]=B1 if(B2:isValid()){Bogies[2,entity]=B2}}
+}
+if(Check){
+if(owner():aimEntity()==Base){
+    if(owner():keyPressed(Controls["Load",string])){ uncontainer(Base) key()}
+    if(owner():keyPressed(Controls["BrakeRelease",string])){timer("release",100) key()}
+    }
+}
+if(clk("uncontainer")){
+    noCollideAll(Base,0)
+        Base:constraintBreak("weld")
+        Base:propPhysicalMaterial("metal")
+        Base:propFreeze(1)
+        
+        for(I=1,4){noCollideAll(Containers[I,entity],0) Containers[I,entity]:propFreeze(0) Containers[I,entity]:propPhysicalMaterial("metal")}
+        
+        if(Bogies[1,entity]:propPhysicalMaterial()=="metal"){
+            for(I=1,Bogies:count()){Bogies[I,entity]:propPhysicalMaterial("gmod_ice")}
+        }
+        else{
+        for(I=1,Bogies:count()){Bogies[I,entity]:propPhysicalMaterial("metal")}
+        }
+    Container=0
+}
+if(clk("container")){
+    for(I=1,Bogies:count()){Bogies[I,entity]:propPhysicalMaterial("gmod_ice")}
+    Base:propFreeze(0)
+    for(I=1,4){ noCollideAll(Containers[I,entity],1) Containers[I,entity]:propFreeze(0) Containers[I,entity]:propPhysicalMaterial("metal")}
+    Container=0 
+}
+if(clk("key")){
+    Check=1
+}
+if(clk("release")){noCollideAll(Base,0) Base:propFreeze(0)
+    for(I=1,Bogies:count()){Bogies[I,entity]:propPhysicalMaterial("gmod_ice")} print("Releasing brakes.")
+}
