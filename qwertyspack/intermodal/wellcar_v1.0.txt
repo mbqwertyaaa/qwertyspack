@@ -145,7 +145,7 @@ function void uncontainer(Entity:entity){
     if(Base:hasConstraints("weld")){
         print("Disconnected.")
         Container=1
-        timer("uncontainerd",10)
+        timer("uncontainer",10)
     }
     else{
         print("Connecting.")
