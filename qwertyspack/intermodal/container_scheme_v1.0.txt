@@ -7,12 +7,17 @@
 #[
                         ////  Changelog ////
 v1.0
-    + All of Magnum's, Patman's, and Caloco's container textures.
-    + Automatically choose between schemes.
-    + Set address using Mat=""
+    + Most of Magnum's, Patman's, and Caloco's container textures are supported.
+    + Randomize scheme.
+    + Set specific scheme using Mat=""
+]#
+#[Instructions:
+1. Place on a container. It will randomize a skin and then remove itself.
+2. Enjoy.
 ]#
 if(first()|dupefinished()){
-    Mat="" #Set this to one of the scheme addresses below to always get a specific one. 
+    Mat="" #Set this to one of the scheme addresses below to always get a specific one.
+#Address is the "appn" part
     
     
 #Don't change anything past here if you don't know what you're doing.
