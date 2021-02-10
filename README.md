@@ -5,6 +5,9 @@ Pack of public e2s
 - All of Magnum's, Patman's, and Caloco's container textures.
 - Automatically choose between schemes.
 - Set address using Mat=""
+### Wellcar loader  
+- Load containers onto one of Magnum's wellcars.
+- Controls can be customized.  
 ## tSG and qwerty's Christmas Lights!
 ### Major Features:
 - Highly customizable string lights (not actual lights) that you can use on your coaches for a festive flair.  
