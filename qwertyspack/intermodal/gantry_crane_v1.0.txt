@@ -1,0 +1,689 @@
+@name qwertyspack/intermodal/gantry_crane_v1.0
+@inputs [Pod]:entity Base:entity
+@outputs GSA GST HSA HST CSA CST X Y Z W
+@persist A [Hoist Gantry]:entity [GantryH]:number [Settings Controls]:table Key KeyG KeyH KeyC Check CheckG CheckH CheckC MoveTime
+@persist GInc HInc CInc CenterCheckPos:vector [Containers WheelsG WheelsH Locator]:array Xp Xn Yp Yn Zp Zn
+@persist [Tracks GantryMetal GantryPaint HoistMetal HoistPaint CableMetal CablePaint]:entity Debug Hue
+@model
+#Made by qwertyaaa for the Intermodal Pack. https://github.com/mbqwertyaaa/qwertyspack/
+#[
+                        ////  Changelog ////
+v1.0
+    + Scalable crane gantry and track system. You can change the travel distance for each axis.
+    + Controls can be customized.
+    + Added sounds.
+]#
+#[Instructions:
+1. Place e2 on the ground.
+2. Wire Base to the prop it spawns. (Green is forward, Red is left.)
+3. Move Base to where you want the right rail to go.
+4. Wire Pod to a suitable seat, preferrably the jeep seat. (NOT a pod controller!)
+5. Play with the settings below until they are to your satisfaction.
+6. Read the control settings to know how to run this.
+7. Once everything is in place, upload the e2 again using the remote uploader or finding the chip on the ground.
+8. Enjoy.
+]#
+if(first() | dupefinished()){
+#Default settings are in comments next to settings
+Debug=0 #0
+PaintColor = vec(200,100,50)
+
+#Maximum directional speed for each gantry part to travel
+Settings["Gantry Max Speed",number]=3               #3
+Settings["Hoist Max Speed",number]=3                #3
+Settings["Cable Max Speed",number]=2                #2
+#Speed change amount. You don't really need to touch this unless you are making an excessively large crane.
+GInc=HInc=0.01                                      #0.01
+CInc=0.04                                           #0.04
+
+#Number of containers to travel total in each direction. (Length of vertical and tracks)
+Settings["Container Length #",number]=4             #4
+Settings["Container Width #",number]=10             #10
+Settings["Container Height #",number]=3             #4
+#Number of containers wide from first leg to second leg
+Settings["Leg 2 Offset #",number]=4                 #4
+#Number of containers wide back from the first leg to end.
+Settings["Hoist Travel Offset Trackside",number]=1  #1
+
+#Enable constraint cables. This setting will not affect any functionality. It is only visual. If set to off, it will not spawn the 8 constraints.
+Settings["Enable Cable",number]=1                   #1
+
+Controls["Forward",string]="W"
+Controls["Backward",string]="S"
+Controls["Left",string]="A"
+Controls["Right",string]="D"
+Controls["Extend",string]="W"
+Controls["Retract",string]="S"
+Controls["Modifier",string]="lshift"
+Controls["Brake",string]="space"
+Controls["Grab",string]="mouse_left"
+Controls["Release",string]="mouse_right"
+Controls["Freeze",string]="R"
+#For the future if a rotating part is implemented.
+#[Controls["Clockwise",string]="D"
+Controls["CounterClockwise",string]="A"
+Controls["Modifier2",string]="lcontrol"
+]#
+
+
+#Don't change anything past here if you don't know what you're doing.
+#Container settings with margins added.
+Settings["Container Length",number]=636+(480/16) #636 is the length of a 53' container
+Settings["Container Width",number]=96+(96/8)     #96 is width of a container
+Settings["Container Height",number]=104          #104 is height of a non-highcube container
+
+Settings["Container Length #",number]=0.5*Settings["Container Length #",number]
+Settings["Container Width #",number]=0.5*Settings["Container Width #",number]
+
+
+Settings["Leg 2 Offset",number]=Settings["Container Width",number]*Settings["Leg 2 Offset #",number]
+
+Settings["Gantry Travel",number]=Settings["Container Length",number]*Settings["Container Length #",number]
+Settings["Gantry Travel Offset",number]=(Settings["Container Length",number]*Settings["Container Length #",number])/2
+
+Settings["Hoist Travel",number]=Settings["Container Width",number]*Settings["Container Width #",number]
+Settings["Hoist Travel Offset",number]=Settings["Container Width",number]*(Settings["Container Width #",number]-Settings["Hoist Travel Offset Trackside",number])
+
+Settings["Gantry Height",number]=Settings["Container Height",number]*(Settings["Container Height #",number]+1)
+
+print("Gantry X Travel: #"+(Settings["Container Length #",number]*2)+" +"+(Settings["Gantry Travel",number]+Settings["Gantry Travel Offset",number])+", "+(-Settings["Gantry Travel",number]+Settings["Gantry Travel Offset",number]))
+print("Gantry Y Travel: #"+(Settings["Container Width #",number]*2)+" +"+(Settings["Hoist Travel",number]+Settings["Hoist Travel Offset",number])+", "+(-Settings["Hoist Travel",number]+Settings["Hoist Travel Offset",number]))
+Pod["Crosshairs",number]==1
+
+noCollideAll(entity(),0)
+if(!Base:isValid()){
+Base = propSpawn("models/sprops/misc/origin.mdl",entity():pos()+vec(0,0,3),entity():angles(),1)
+}
+propSpawnUndo(0)
+enableConstraintUndo(0)
+M = ""
+M2 = "models/proppertextures/acrylic"
+M3 = "models/proppertextures/enamel_cast_gray"
+M4 = "models/proppertextures/enamel_cast_darkgray"
+M5 = "models/proppertextures/acrylic_hazard_downchevron_white_d1"
+S=1
+C1 = vec(255)
+
+function void key(){Check=0 timer("key",Key)}
+function void keyG(){CheckG=0 timer("keyG",KeyG)}
+function void keyH(){CheckH=0 timer("keyH",KeyH)}
+function void keyC(){CheckC=0 timer("keyC",KeyC)}
+
+#if this key
+function number ky(Key1:string){ 
+    if(Check){ return Pod:driver():keyPressed(Key1)}
+    else{return 0}
+}
+#if not this key
+function number kn(Key1:string){ 
+    if(Check){ return !Pod:driver():keyPressed(Key1)}
+    else{return 0}
+}
+#if this key and that key
+function number kyy(Key1:string,Key2:string){
+    if(Check&Pod:driver():keyPressed(Key1)&Pod:driver():keyPressed(Key2)){
+    return 1 }
+    else{return 0}
+}
+#if this key and not that key
+function number kyn(Key1:string,Key2:string){
+    if(Check&Pod:driver():keyPressed(Key1)&!Pod:driver():keyPressed(Key2)){
+    return 1 }
+    else{return 0}
+}
+#if not this key and not that key
+function number knn(Key1:string,Key2:string){
+    if(Check&!Pod:driver():keyPressed(Key1)&!Pod:driver():keyPressed(Key2)){
+    return 1 }
+    else{return 0}
+}
+#if not this key, that key, and if this other key
+function number knny(Key1:string,Key2:string,Key3:string){
+    if(Check&!Pod:driver():keyPressed(Key1)&!Pod:driver():keyPressed(Key2)&Pod:driver():keyPressed(Key3)){
+    return 1 }
+    else{return 0}
+}
+#if not this key, that key, and not that other key
+function number knnn(Key1:string,Key2:string,Key3:string){
+    if(Check&!Pod:driver():keyPressed(Key1)&!Pod:driver():keyPressed(Key2)&!Pod:driver():keyPressed(Key3)){
+    return 1 }
+    else{return 0}
+}
+#Set timer settings
+KeyG=KeyH=KeyC=100
+Key=500
+MoveTime=50
+Check=1
+#Spawn Gantry and Hoist props
+    Gantry = propSpawn("models/sprops/rectangles/size_6/rect_96x480x3.mdl",
+    Base:toWorld(vec(0,0,Settings["Gantry Height",number])),
+    Base:toWorld(ang()),1)
+    Gantry:setAlpha(0)
+    Gantry:propFreeze(1)
+    Gantry:setMass(50000)
+    noCollideAll(Gantry,1)
+    Hoist = propSpawn("models/sprops/rectangles/size_6/rect_96x480x3.mdl",
+    Gantry:toWorld(vec(0,0,-Settings["Container Height",number])),
+    Base:toWorld(ang()),1)
+    Hoist:setAlpha(0)
+    Hoist:propFreeze(1)
+    Hoist:setMass(50000)
+    noCollideAll(Hoist,1)
+#Move Pod to position
+Pod:setPos(Gantry:toWorld(vec(0,-200,-Settings["Container Height",number]+60)))
+Pod:setAng(Gantry:toWorld(ang(0,-90,0)))
+weld(Pod,Gantry)
+timer("move",MoveTime)
+CenterCheckPos=Base:toWorld(Gantry:pos())
+timer("driver",1000)
+#Functions to make my life easier.
+function entity p2mC(Parent:entity, Pos:vector, Angle:angle, Scale:number, UVS:number, Color:vector, Material:string){
+    local P2M=p2mCreate(Parent:toWorld(vec()),Parent:toWorld(ang()),UVS)
+    P2M:p2mSetColor(Color)
+    P2M:p2mSetMaterial(Material)
+    P2M:p2mSetMeshScale(Scale)
+    P2M:p2mSetParent(Parent)
+    return P2M
+}
+function entity p2mC(Holo:number, Pos:vector, Angle:angle, Scale:number, UVS:number, Color:vector, Material:string){
+    local Parent = holoEntity(Holo)
+    local P2M=p2mCreate(Parent:toWorld(vec()),Parent:toWorld(ang()),UVS)
+    P2M:p2mSetColor(Color)
+    P2M:p2mSetMaterial(Material)
+    P2M:p2mSetMeshScale(Scale)
+    P2M:p2mSetParent(Parent)
+    return P2M
+}
+function entity p2mC(Parent:entity, Pos:vector, Angle:angle, Scale:number, UVS:number, Color:vector, Alpha:number, Material:string){
+    local P2M=p2mCreate(Parent:toWorld(vec()),Parent:toWorld(ang()),UVS)
+    P2M:p2mSetColor(vec4(Color,Alpha))
+    P2M:p2mSetMaterial(Material)
+    P2M:p2mSetMeshScale(Scale)
+    P2M:p2mSetParent(Parent)
+    return P2M
+}
+function void p2mB(P2M:entity){
+    P2M:p2mBuild()
+}
+function void hm(P2M:entity, Pos:vector, Angle:angle, Scale:vector, Color:vector, Material:string, Parent:entity, Model:string,){
+P2M:p2mPushModel(Model,Pos,Angle,Scale)}
+function void hm(P2M:entity, Pos:vector, Angle:angle, Scale:vector, Color:vector, Material:string, Parent:number, Model:string,){
+P2M:p2mPushModel(Model,Pos,Angle,Scale)}
+function void hm(I:number, Pos:vector, Angle:angle, Scale:vector, Color:vector, Material:string, Parent:entity, Model:string,){
+holoCreate(I,Parent:toWorld(Pos),Scale,Parent:toWorld(Angle),Color,Model)
+holoParent(I,Parent) holoMaterial(I, Material)}
+
+function void hm(I:number, Pos:vector, Angle:angle, Scale:vector, Color:vector, Material:string, Parent:number, Model:string,){
+holoCreate(I,holoEntity(Parent):toWorld(Pos),Scale,holoEntity(Parent):toWorld(Angle),Color,Model)
+holoParent(I,holoEntity(Parent)) holoMaterial(I, Material)}
+
+function void hslFade(Index:number){if(Hue>=359){Hue=0} Hue++ holoColor(Index,hsl2rgb(Hue,1,0.5))}
+
+hm(A,vec(0,0,0)*S,ang(0,0,0),vec(0)*S,C1,M,Base,"models/sprops/rectangles/size_6/rect_96x480x3.mdl")
+
+A++ hm(A,vec(0,0,Settings["Gantry Height",number])*S,ang(0,0,0),vec(0)*S,C1,M,Base,"models/sprops/rectangles/size_6/rect_96x480x3.mdl")
+GantryH=A
+Tracks = p2mC(holoEntity(0), vec(0,0,0), ang(0,0,0), 1, 1, C1, M4)
+#These planes show the bounds of the crane
+if(Debug){
+A++ hm(Tracks,vec(Settings["Gantry Travel",number]+Settings["Gantry Travel Offset",number]+(480/2),0,Settings["Gantry Height",number])*S,ang(90,0,0),vec(3)*S,C1, M4,Base,"models/hunter/plates/plate1x1.mdl")
+A++ hm(Tracks,vec(-Settings["Gantry Travel",number]+Settings["Gantry Travel Offset",number]-(480/2),0,Settings["Gantry Height",number])*S,ang(90,0,0),vec(3)*S,C1, M4,Base,"models/hunter/plates/plate1x1.mdl")
+A++ hm(Tracks,vec(0,Settings["Hoist Travel",number]+Settings["Hoist Travel Offset",number]+(96/2),Settings["Gantry Height",number])*S,ang(0,0,90),vec(3)*S,C1, M4,Base,"models/hunter/plates/plate1x1.mdl")
+A++ hm(Tracks,vec(0,-Settings["Hoist Travel",number]+Settings["Hoist Travel Offset",number]-(96/2),Settings["Gantry Height",number])*S,ang(0,0,90),vec(3)*S,C1, M4,Base,"models/hunter/plates/plate1x1.mdl")
+}
+#Rails
+for(I=0,Settings["Gantry Travel",number]/Settings["Container Length",number]){
+A++ hm(Tracks,vec((-Settings["Container Length",number]*I)+Settings["Gantry Travel Offset",number],0,0)*S,ang(0,0,90),vec(1.1563,1,1)*S,C1,M,0,"models/mechanics/solid_steel/i_beam_96.mdl")
+A++ hm(Tracks,vec((Settings["Container Length",number]*I)+Settings["Gantry Travel Offset",number],0,0)*S,ang(0,0,90),vec(1.1563,1,1)*S,C1,M,0,"models/mechanics/solid_steel/i_beam_96.mdl")
+A++ hm(Tracks,vec((-Settings["Container Length",number]*I)+Settings["Gantry Travel Offset",number],Settings["Leg 2 Offset",number],0)*S,ang(0,0,90),vec(1.1563,1,1)*S,C1,M,0,"models/mechanics/solid_steel/i_beam_96.mdl")
+A++ hm(Tracks,vec((Settings["Container Length",number]*I)+Settings["Gantry Travel Offset",number],Settings["Leg 2 Offset",number],0)*S,ang(0,0,90),vec(1.1563,1,1)*S,C1,M,0,"models/mechanics/solid_steel/i_beam_96.mdl")
+}
+p2mB(Tracks)
+
+if(Debug){print("End-to-end gantry travel: "+Settings["Container Length",number]*Settings["Container Length #",number]*2)}
+
+A++ hm(A,vec((Settings["Container Length",number]/2),0,-Settings["Gantry Height",number]+(36/2))*S,ang(0,0,90),vec(0.75,0.75,1)*S,C1,M,GantryH,"models/mechanics/wheels/wheel_rounded_36s.mdl")
+WheelsG[1,number]=A
+A++ hm(A,vec((Settings["Container Length",number]/2)-80,0,-Settings["Gantry Height",number]+(36/2))*S,ang(0,0,90),vec(0.75,0.75,1)*S,C1,M,GantryH,"models/mechanics/wheels/wheel_rounded_36s.mdl")
+WheelsG[2,number]=A
+A++ hm(A,vec(-(Settings["Container Length",number]/2)+80,0,-Settings["Gantry Height",number]+(36/2))*S,ang(0,0,90),vec(0.75,0.75,1)*S,C1,M,GantryH,"models/mechanics/wheels/wheel_rounded_36s.mdl")
+WheelsG[3,number]=A
+A++ hm(A,vec(-(Settings["Container Length",number]/2),0,-Settings["Gantry Height",number]+(36/2))*S,ang(0,0,90),vec(0.75,0.75,1)*S,C1,M,GantryH,"models/mechanics/wheels/wheel_rounded_36s.mdl")
+WheelsG[4,number]=A
+
+A++ hm(A,vec(0,0,-Settings["Leg 2 Offset",number])*S,ang(0,0,0),vec(0.75,0.75,1)*S,C1,M,WheelsG[1,number],"models/mechanics/wheels/wheel_rounded_36s.mdl")
+A++ hm(A,vec(0,0,-Settings["Leg 2 Offset",number])*S,ang(0,0,0),vec(0.75,0.75,1)*S,C1,M,WheelsG[2,number],"models/mechanics/wheels/wheel_rounded_36s.mdl")
+A++ hm(A,vec(0,0,-Settings["Leg 2 Offset",number])*S,ang(0,0,0),vec(0.75,0.75,1)*S,C1,M,WheelsG[3,number],"models/mechanics/wheels/wheel_rounded_36s.mdl")
+A++ hm(A,vec(0,0,-Settings["Leg 2 Offset",number])*S,ang(0,0,0),vec(0.75,0.75,1)*S,C1,M,WheelsG[4,number],"models/mechanics/wheels/wheel_rounded_36s.mdl")
+
+#Gantry details
+GantryMetal = p2mC(GantryH, vec(0,0,0), ang(0,0,0), 1, 1, PaintColor, M2)
+GantryPaint = p2mC(GantryH, vec(0,0,0), ang(0,0,0), 1, 100, PaintColor, M5)
+
+#Gantry wheel block connector (Bottom horizontal I Beam)
+A++ hm(GantryMetal,vec(0,0,63-Settings["Gantry Height",number])*S,ang(0,0,0),vec(0.713,1.2,1)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam2_96.mdl")
+A++ hm(GantryMetal,vec(0,Settings["Leg 2 Offset",number],63-Settings["Gantry Height",number])*S,ang(0,0,0),vec(0.713,1.2,1)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam2_96.mdl")
+
+#Gantry Verticals
+for(I=0,Settings["Container Height #",number]-1){
+A++ hm(GantryMetal,vec((Settings["Container Length",number]/2)+60,0,-59-Settings["Container Height",number]*I)*S,ang(90,0,0),vec(2.166,1.2,1)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam2_8.mdl")
+A++ hm(GantryMetal,vec(-(Settings["Container Length",number]/2)-60,0,-59-Settings["Container Height",number]*I)*S,ang(90,0,0),vec(2.166,1.2,1)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam2_8.mdl")
+A++ hm(GantryMetal,vec((Settings["Container Length",number]/2)+60,Settings["Leg 2 Offset",number],-59-Settings["Container Height",number]*I)*S,ang(90,0,0),vec(2.166,1.2,1)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam2_8.mdl")
+A++ hm(GantryMetal,vec(-(Settings["Container Length",number]/2)-60,Settings["Leg 2 Offset",number],-59-Settings["Container Height",number]*I)*S,ang(90,0,0),vec(2.166,1.2,1)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam2_8.mdl")
+}
+A++ hm(GantryPaint,vec((Settings["Container Length",number]/2)-40,0,28-Settings["Gantry Height",number])*S,ang(0,0,90),vec(1,1,1.5)*S,PaintColor,M5,GantryH,"models/sprops/cuboids/height12/size_3/cube_36x120x12.mdl")
+A++ hm(GantryPaint,vec((Settings["Container Length",number]/2)-40,Settings["Leg 2 Offset",number],28-Settings["Gantry Height",number])*S,ang(0,0,90),vec(1,1,1.5)*S,PaintColor,M5,GantryH,"models/sprops/cuboids/height12/size_3/cube_36x120x12.mdl")
+A++ hm(GantryPaint,vec((-Settings["Container Length",number]/2)+40,0,28-Settings["Gantry Height",number])*S,ang(0,0,90),vec(1,1,1.5)*S,PaintColor,M5,GantryH,"models/sprops/cuboids/height12/size_3/cube_36x120x12.mdl")
+A++ hm(GantryPaint,vec((-Settings["Container Length",number]/2)+40,Settings["Leg 2 Offset",number],28-Settings["Gantry Height",number])*S,ang(0,0,90),vec(1,1,1.5)*S,PaintColor,M5,GantryH,"models/sprops/cuboids/height12/size_3/cube_36x120x12.mdl")
+
+GantryRails = p2mC(GantryH, vec(0,0,0), ang(0,0,0), 1, 1, C1, M4)
+#A++ hm(GantryMetal,vec(240,0,0)*S,ang(0,90,0),vec(1,1.2,0.75)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam2_16.mdl")
+for(I=0,Settings["Hoist Travel",number]/Settings["Container Width",number]){
+A++ hm(GantryMetal,vec((Settings["Container Length",number]/2)+60,(-Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],30)*S,ang(0,90,0),vec(1.125,1.5,2)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+A++ hm(GantryMetal,vec((Settings["Container Length",number]/2)+60,(Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],30)*S,ang(0,90,0),vec(1.125,1.5,2)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+A++ hm(GantryMetal,vec(-(Settings["Container Length",number]/2)-60,(-Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],30)*S,ang(0,90,0),vec(1.125,1.5,2)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+A++ hm(GantryMetal,vec(-(Settings["Container Length",number]/2)-60,(Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],30)*S,ang(0,90,0),vec(1.125,1.5,2)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+
+A++ hm(GantryRails,vec((Settings["Container Length",number]/2)+60,(-Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],46)*S,ang(0,90,90),vec(1.125,0.5,0.75)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+A++ hm(GantryRails,vec((Settings["Container Length",number]/2)+60,(Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],46)*S,ang(0,90,90),vec(1.125,0.5,0.75)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+A++ hm(GantryRails,vec(-(Settings["Container Length",number]/2)-60,(-Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],46)*S,ang(0,90,90),vec(1.125,0.5,0.75)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+A++ hm(GantryRails,vec(-(Settings["Container Length",number]/2)-60,(Settings["Container Width",number]*I)+Settings["Hoist Travel Offset",number],46)*S,ang(0,90,90),vec(1.125,0.5,0.75)*S,C1,M,GantryH,"models/mechanics/solid_steel/i_beam_16.mdl")
+}
+p2mB(GantryMetal)
+p2mB(GantryPaint)
+p2mB(GantryRails)
+
+A++ hm(A,vec(240+120+33,30,64)*S,ang(90,0,0),vec(0.75,0.75,0.75)*S,C1,M,Gantry,"models/mechanics/wheels/wheel_rounded_36s.mdl")
+WheelsH[1,number]=A
+A++ hm(A,vec(240+120+33,-30,64)*S,ang(90,0,0),vec(0.75,0.75,0.75)*S,C1,M,Gantry,"models/mechanics/wheels/wheel_rounded_36s.mdl")
+WheelsH[2,number]=A
+
+A++ hm(A,vec(0,0,-480-240-33-33)*S,ang(0,0,0),vec(0.75,0.75,0.75)*S,C1,M,WheelsH[1,number],"models/mechanics/wheels/wheel_rounded_36s.mdl")
+A++ hm(A,vec(0,0,-480-240-33-33)*S,ang(0,0,0),vec(0.75,0.75,0.75)*S,C1,M,WheelsH[2,number],"models/mechanics/wheels/wheel_rounded_36s.mdl")
+
+#Hoist Gantry details
+HoistMetal = p2mC(Gantry, vec(0,0,0), ang(0,0,0), 1, 1, PaintColor, M2)
+HoistPaint = p2mC(Gantry, vec(0,0,0), ang(0,0,0), 1, 1, C1, M3)
+#Bottom horizontals
+A++ hm(HoistMetal,vec(0,(96/2)-6,7)*S,ang(0,0,0),vec(1.25,1,1)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_48.mdl")
+A++ hm(HoistMetal,vec(0,-(96/2)+6,7)*S,ang(0,0,0),vec(1.25,1,1)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_48.mdl")
+#Top horizontals
+A++ hm(HoistMetal,vec(0,(96/2)-6,7+55+2)*S,ang(0,0,0),vec(1.215,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_48.mdl")
+A++ hm(HoistMetal,vec(0,-(96/2)+6,7+55+2)*S,ang(0,0,0),vec(1.215,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_48.mdl")
+#Bottom plate
+A++ hm(HoistMetal,vec(0,0,9+25)*S,ang(0,0,0),vec(1.46,0.89,1)*S,PaintColor, M3,Gantry,"models/sprops/cuboids/height48/size_2/cube_96x480x48.mdl")
+#Wheel motors.
+A++ hm(HoistPaint,vec(240+120+10,0,9+55)*S,ang(0,90,0),vec(1.1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/cuboids/height12/size_2/cube_24x108x12.mdl")
+A++ hm(HoistPaint,vec(240+120+10+16,30,9+55)*S,ang(0,180,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/engines/emotor-standalone-sml.mdl")
+A++ hm(HoistPaint,vec(240+120+10+16,-30,9+55)*S,ang(0,180,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/engines/emotor-standalone-sml.mdl")
+
+A++ hm(HoistPaint,vec(-240-120-10,0,9+55)*S,ang(0,90,0),vec(1.1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/cuboids/height12/size_2/cube_24x108x12.mdl")
+A++ hm(HoistPaint,vec(-240-120-10-16,30,9+55)*S,ang(0,0,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/engines/emotor-standalone-sml.mdl")
+A++ hm(HoistPaint,vec(-240-120-10-16,-30,9+55)*S,ang(0,0,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/engines/emotor-standalone-sml.mdl")
+
+A++ hm(HoistMetal,vec(0,0,1)*S,ang(0,0,0),vec(1)*S,PaintColor,M3,Hoist,"models/sprops/rectangles/size_6/rect_96x480x3.mdl")
+
+A++ hm(HoistMetal,vec(120-4,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-120+4,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistMetal,vec(240,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-240,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistMetal,vec(240+120-6,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-240-120+6,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistMetal,vec(240+120+20,60,9+55)*S,ang(0,0,0),vec(1.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-240-120-20,60,9+55)*S,ang(0,0,0),vec(1.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(240+120+20,-60,9+55)*S,ang(0,0,0),vec(1.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-240-120-20,-60,9+55)*S,ang(0,0,0),vec(1.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistMetal,vec(120-4,0,9+55)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-120+4,0,9+55)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistMetal,vec(240,0,9+55)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-240,0,9+55)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistMetal,vec(240+120+50,0,9+55)*S,ang(0,90,0),vec(2.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(240+120-10,0,9+55)*S,ang(0,90,0),vec(2.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistMetal,vec(-240-120-50,0,9+55)*S,ang(0,90,0),vec(2.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(HoistMetal,vec(-240-120+10,0,9+55)*S,ang(0,90,0),vec(2.5,1,0.85)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(HoistPaint,vec(240-4-23,(96/2)-3-23,-1)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(HoistPaint,vec(240-4-20,(96/2)-3-20,-10)*S,ang(180,-45,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(HoistPaint,vec(240-4-17,(96/2)-3-17,-1)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+
+A++ hm(HoistPaint,vec(-240+4+23,-(96/2)+3+23,-1)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(HoistPaint,vec(-240+4+20,-(96/2)+3+20,-10)*S,ang(180,-45+180,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(HoistPaint,vec(-240+4+17,-(96/2)+3+17,-1)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+
+
+A++ hm(HoistPaint,vec(240-4-23,-(96/2)+3+23,-1)*S,ang(90,-45-90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(HoistPaint,vec(240-4-20,-(96/2)+3+20,-10)*S,ang(180,-45-90,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(HoistPaint,vec(240-4-17,-(96/2)+3+17,-1)*S,ang(90,-45-90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+
+A++ hm(HoistPaint,vec(-240+4+23,(96/2)-3-23,-1)*S,ang(90,-45+90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(HoistPaint,vec(-240+4+20,(96/2)-3-20,-10)*S,ang(180,-45+90,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(HoistPaint,vec(-240+4+17,(96/2)-3-17,-1)*S,ang(90,-45+90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+
+p2mB(HoistMetal)
+p2mB(HoistPaint)
+
+CabPaint = p2mC(Gantry, vec(0,0,0), ang(0,0,0), 1, 1, C1, M3)
+CabGlass = p2mC(Gantry, vec(0,0,0), ang(0,0,0), 1, 1, vec(10,30,70)+50, 70, M2)
+A++ hm(CabPaint,vec(-40,-100,20)*S,ang(0,90,0),vec(1.25,1,1)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_16.mdl")
+A++ hm(CabPaint,vec(40,-100,20)*S,ang(0,90,0),vec(1.25,1,1)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_16.mdl")
+
+A++ hm(CabPaint,vec(-40,-200,-10)*S,ang(90,90,0),vec(1,1,0.5)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam2_8.mdl")
+A++ hm(CabPaint,vec(-20,-200,-50)*S,ang(0,0,90),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(CabPaint,vec(0,-200,-55)*S,ang(0,0,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/rectangles/size_4/rect_36x72x3.mdl")
+A++ hm(CabPaint,vec(0,-200,15)*S,ang(0,0,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/rectangles/size_4/rect_36x72x3.mdl")
+
+A++ hm(CabPaint,vec(0,-200-16.5,-20-22)*S,ang(0,0,90),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/rectangles/size_3/rect_24x72x3.mdl")
+A++ hm(CabPaint,vec(0,-200-16.5,2)*S,ang(0,0,90),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/rectangles/size_3/rect_24x72x3.mdl")
+
+A++ hm(CabPaint,vec(-36,-200,-20)*S,ang(90,0,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/rectangles/size_4/rect_36x72x3.mdl")
+A++ hm(CabGlass,vec(36,-200,-20)*S,ang(90,0,0),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/rectangles/size_4/rect_36x72x3.mdl")
+A++ hm(CabGlass,vec(0,-183.5,-20)*S,ang(0,0,90),vec(1,1,1)*S,PaintColor, M3,Gantry,"models/sprops/rectangles/size_72/rect_72x72x3.mdl")
+
+p2mB(CabPaint)
+p2mB(CabGlass)
+
+if(Settings["Enable Cable",number]){
+    local X = 240-24
+    local Y = (96/2)-23
+    local Width = 1
+    hydraulic(1,Hoist,vec(X,Y,20)+vec(-4.5,4.5,0),Gantry,vec(X,Y,-10)+vec(-4.5,4.5,0),0,0,"cable/cable",Width,99999)
+    hydraulic(2,Hoist,vec(X,Y,20)+vec(4.5,-4.5,0),Gantry,vec(X,Y,-10)+vec(4.5,-4.5,0),0,0,"cable/cable",Width,99999)
+    hydraulic(3,Hoist,vec(-X,-Y,20)+vec(-4.5,4.5,0),Gantry,vec(-X,-Y,-10)+vec(-4.5,4.5,0),0,0,"cable/cable",Width,99999)
+    hydraulic(4,Hoist,vec(-X,-Y,20)+vec(4.5,-4.5,0),Gantry,vec(-X,-Y,-10)+vec(4.5,-4.5,0),0,0,"cable/cable",Width,99999)
+    
+    hydraulic(5,Hoist,vec(-X,Y,20)+vec(4.5,4.5,0),Gantry,vec(-X,Y,-10)+vec(4.5,4.5,0),0,0,"cable/cable",Width,99999)
+    hydraulic(6,Hoist,vec(-X,Y,20)+vec(-4.5,-4.5,0),Gantry,vec(-X,Y,-10)+vec(-4.5,-4.5,0),0,0,"cable/cable",Width,99999)
+    hydraulic(7,Hoist,vec(X,-Y,20)+vec(4.5,4.5,0),Gantry,vec(X,-Y,-10)+vec(4.5,4.5,0),0,0,"cable/cable",Width,99999)
+    hydraulic(8,Hoist,vec(X,-Y,20)+vec(-4.5,-4.5,0),Gantry,vec(X,-Y,-10)+vec(-4.5,-4.5,0),0,0,"cable/cable",Width,99999)
+}
+#Hoist details
+CableMetal = p2mC(Hoist, vec(0,0,0), ang(0,0,0), 1, 1, PaintColor, M3)
+A++ hm(CableMetal,vec(0,(96/2)-6,7)*S,ang(0,0,0),vec(1.25,1,1)*S,PaintColor, M3,Hoist,"models/mechanics/solid_steel/i_beam_32.mdl")
+A++ hm(CableMetal,vec(0,-(96/2)+6,7)*S,ang(0,0,0),vec(1.25,1,1)*S,PaintColor, M3,Hoist,"models/mechanics/solid_steel/i_beam_32.mdl")
+
+A++ hm(CableMetal,vec(240-4,(96/2)-3,-1)*S,ang(180,0,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/misc/pyramids/rsize_1/rpyr_12x6.mdl")
+A++ hm(CableMetal,vec(240-4,-(96/2)+3,-1)*S,ang(180,0,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/misc/pyramids/rsize_1/rpyr_12x6.mdl")
+A++ hm(CableMetal,vec(-240+4,(96/2)-3,-1)*S,ang(180,0,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/misc/pyramids/rsize_1/rpyr_12x6.mdl")
+A++ hm(CableMetal,vec(-240+4,-(96/2)+3,-1)*S,ang(180,0,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/misc/pyramids/rsize_1/rpyr_12x6.mdl")
+A++ hm(CableMetal,vec(0,0,1)*S,ang(0,0,0),vec(1)*S,PaintColor,M3,Hoist,"models/sprops/rectangles/size_6/rect_96x480x3.mdl")
+
+A++ hm(CableMetal,vec(240-4,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Hoist,"models/mechanics/solid_steel/i_beam_4.mdl")
+A++ hm(CableMetal,vec(-240+4,0,9)*S,ang(0,90,0),vec(1.75,1,0.85)*S,PaintColor, M3,Hoist,"models/mechanics/solid_steel/i_beam_4.mdl")
+
+A++ hm(CableMetal,vec(240-4-23,(96/2)-3-23,11)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(CableMetal,vec(240-4-20,(96/2)-3-20,20)*S,ang(180,-45,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(CableMetal,vec(240-4-17,(96/2)-3-17,11)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+
+A++ hm(CableMetal,vec(-240+4+23,-(96/2)+3+23,11)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(CableMetal,vec(-240+4+20,-(96/2)+3+20,20)*S,ang(180,-45+180,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(CableMetal,vec(-240+4+17,-(96/2)+3+17,11)*S,ang(90,-45,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+
+A++ hm(CableMetal,vec(240-4-23,-(96/2)+3+23,11)*S,ang(90,-45-90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(CableMetal,vec(240-4-20,-(96/2)+3+20,20)*S,ang(180,-45-90,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(CableMetal,vec(240-4-17,-(96/2)+3+17,11)*S,ang(90,-45-90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+
+A++ hm(CableMetal,vec(-240+4+23,(96/2)-3-23,11)*S,ang(90,-45+90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+A++ hm(CableMetal,vec(-240+4+20,(96/2)-3-20,20)*S,ang(180,-45+90,0),vec(0.5)*S,PaintColor, M3,Hoist,"models/sprops/trans/miscwheels/tank30.mdl")
+A++ hm(CableMetal,vec(-240+4+17,(96/2)-3-17,11)*S,ang(90,-45+90,90),vec(1)*S,PaintColor, M3,Hoist,"models/sprops/rectangles/size_2/rect_12x24x3.mdl")
+p2mB(CableMetal)
+
+#Locators
+Locator=array()
+A++ hm(A,vec(236,(96/2)-3,-(108/2))*S,ang(90,0,90),vec(1,1,1)*S,C1,M2,Hoist,"models/sprops/rectangles_thin/size_0/rect_1_5x108x1_5.mdl")
+Locator[1,number]=A
+A++ hm(A,vec(-236,(96/2)-3,-(108/2))*S,ang(90,0,90),vec(1,1,1)*S,C1,M2,Hoist,"models/sprops/rectangles_thin/size_0/rect_1_5x108x1_5.mdl")
+Locator[2,number]=A
+A++ hm(A,vec(236,-(96/2)+3,-(108/2))*S,ang(90,0,90),vec(1,1,1)*S,C1,M2,Hoist,"models/sprops/rectangles_thin/size_0/rect_1_5x108x1_5.mdl")
+Locator[3,number]=A
+A++ hm(A,vec(-236,-(96/2)+3,-(108/2))*S,ang(90,0,90),vec(1,1,1)*S,C1,M2,Hoist,"models/sprops/rectangles_thin/size_0/rect_1_5x108x1_5.mdl")
+Locator[4,number]=A
+
+if(Debug){print("Detail ent number: "+A)}
+}
+#Begin control loop
+if(Pod:driver():isValid()){
+#Length Travel
+X=Base:toLocal(Gantry:pos()):x()#-CenterCheckPos:y()
+if(X>Settings["Gantry Travel",number]+Settings["Gantry Travel Offset",number]){Xp=1}else{Xp=0}
+if(X<-(Settings["Gantry Travel",number]-Settings["Gantry Travel Offset",number])){Xn=1}else{Xn=0}
+#Width Travel
+Y=Base:toLocal(Gantry:pos()):y()#-CenterCheckPos:x()
+if(Y>Settings["Hoist Travel",number]+Settings["Hoist Travel Offset",number]){Yp=1}else{Yp=0}
+if(Y<-(Settings["Hoist Travel",number]-Settings["Hoist Travel Offset",number])){Yn=1}else{Yn=0}
+#Height Travel
+Z=Base:toLocal(Hoist:pos()):z()-Base:toLocal(Gantry:pos()):z()
+if(Z>-(Settings["Container Height",number]/2)){Zp=1}else{Zp=0}
+if(Z<-Settings["Gantry Height",number]+(Settings["Container Height",number]*(4/5))){Zn=1}else{Zn=0}
+
+if(kyn(Controls["Forward",string],Controls["Modifier",string])){GST=Settings["Gantry Max Speed",number]
+    if(Xp){GST=-Settings["Gantry Max Speed",number]
+        if(GSA>0){GSA=0 timer("clang",10)}
+        }
+    keyG()
+}
+if(kyn(Controls["Backward",string],Controls["Modifier",string])){GST=-Settings["Gantry Max Speed",number]
+    if(Xn){GST=Settings["Gantry Max Speed",number]
+        if(GSA<0){GSA=0 timer("clang",10)}
+        }
+    keyG()
+}
+if(knn("W","S")|ky(Controls["Modifier",string])){GST=0
+    if(Xp){GST=-Settings["Gantry Max Speed",number]
+        if(GSA>0){GSA=0 timer("clang",10)}
+        }
+    if(Xn){GST=Settings["Gantry Max Speed",number]
+        if(GSA<0){GSA=0 timer("clang",10)}
+        }
+    keyG()
+    if(abs(GSA)<GInc*3){GSA=0}
+}
+
+if(ky(Controls["Left",string])){HST=Settings["Hoist Max Speed",number]
+    if(Yp){HST=-Settings["Hoist Max Speed",number]
+        if(HSA>0){HSA=0 timer("clang",10)}
+        }
+    keyH()
+}
+if(ky(Controls["Right",string])){HST=-Settings["Hoist Max Speed",number]
+    if(Yn){HST=Settings["Hoist Max Speed",number]
+        if(HSA<0){HSA=0 timer("clang",10)}
+        }
+    keyH()
+}
+if(knn(Controls["Left",string],Controls["Right",string])){HST=0
+     if(Yp){HST=-Settings["Hoist Max Speed",number]
+        if(HSA>0){HSA=0 timer("clang",10)}
+        }
+    if(Yn){HST=Settings["Hoist Max Speed",number]
+        if(HSA<0){HSA=0 timer("clang",10)}
+        }
+    keyH()
+    if(abs(HSA)<HInc*3){HSA=0}
+}
+
+if(kyy(Controls["Retract",string],Controls["Modifier",string])){CST=Settings["Cable Max Speed",number]
+    if(Zp){CST=-Settings["Cable Max Speed",number]
+        if(CSA>0){CSA=0 timer("clang",10)}
+        }
+    keyC()
+}
+if(kyy(Controls["Extend",string],Controls["Modifier",string])){CST=-Settings["Cable Max Speed",number]
+    if(Zn){CST=Settings["Cable Max Speed",number]
+        if(CSA<0){CSA=0 timer("clang",10)}
+        }
+    keyC()
+}
+if(knn(Controls["Extend",string],Controls["Retract",string])|kn(Controls["Modifier",string])){CST=0
+    keyC()
+    if(abs(CSA)<CInc*3){CSA=0}
+}
+if(ky(Controls["Brake",string])){GST=HST=CST=0
+    if(abs(GSA)<GInc*3){GSA=0}
+    if(abs(HSA)<HInc*3){HSA=0}
+    if(abs(CSA)<CInc*3){CSA=0}
+    keyG()
+    keyH()
+    keyC()
+}
+if(ky(Controls["Grab",string])){
+    Containers[1,entity]=noentity()
+    Containers[2,entity]=noentity()
+    Hoist:propFreeze(1)
+    findClearBlackEntityList()
+    findExcludeModel(Hoist:model())
+    findExcludeModel("wellcar")
+    findIncludeClass("prop_physics")
+    findInSphere(Hoist:toWorld(vec(Settings["Container Length",number]/4,0,0)),Settings["Container Height",number]/2)
+    Containers[1,entity]=find()
+        if(Containers[1,entity]:isValid()){
+        Containers[1,entity]:propFreeze(0)
+        noCollideAll(Containers[1,entity],1)
+        print("Front")
+        }
+    findInSphere(Hoist:toWorld(vec(-(Settings["Container Length",number]/4),0,0)),Settings["Container Height",number]/2)
+    Containers[2,entity]=find()
+        if(Containers[2,entity]:isValid()){
+        Containers[2,entity]:propFreeze(0)
+        noCollideAll(Containers[2,entity],1)
+        print("Rear")
+        }
+        timer("grab",50)
+    findClearBlackList()
+    findClearWhiteList()
+    #Set Locators to bottom of container
+        holoPos(Locator[1,number],Hoist:toWorld(vec(236,(96/2)-3,-108*1.5)))
+        holoPos(Locator[2,number],Hoist:toWorld(vec(-236,(96/2)-3,-108*1.5)))
+        holoPos(Locator[3,number],Hoist:toWorld(vec(236,-(96/2)+3,-108*1.5)))
+        holoPos(Locator[4,number],Hoist:toWorld(vec(-236,-(96/2)+3,-108*1.5)))
+    key()
+}
+if(ky(Controls["Release",string])){
+    Hoist:propFreeze(1)
+    noCollideAll(Containers[1,entity],0)
+    Hoist:constraintBreak(Containers[1,entity])
+    noCollideAll(Containers[2,entity],0)
+    Hoist:constraintBreak(Containers[2,entity])
+    #Set Locators back to Hoist
+    holoPos(Locator[1,number],Hoist:toWorld(vec(236,(96/2)-3,-(108/2))))
+    holoPos(Locator[2,number],Hoist:toWorld(vec(-236,(96/2)-3,-(108/2))))
+    holoPos(Locator[3,number],Hoist:toWorld(vec(236,-(96/2)+3,-(108/2))))
+    holoPos(Locator[4,number],Hoist:toWorld(vec(-236,-(96/2)+3,-(108/2))))
+    soundVolume(2,1)
+    Pod:driver():soundPlay(2,3,"EpicMetal.ImpactSoft")
+    key()
+}
+if(ky(Controls["Freeze",string])){
+    timer("release",10)
+    key()
+}
+if(clk("grab")){
+    weld(Hoist,Containers[1,entity])
+    weld(Hoist,Containers[2,entity])
+    if(Hoist:isWeldedTo()){soundVolume(1,1) Pod:driver():soundPlay(1,3,"EpicMetal.ImpactHard")}
+}
+if(clk("release")){
+    Containers[1,entity]:propFreeze(1)
+    Containers[2,entity]:propFreeze(1)
+}
+#Handles acceleration in each axis
+if(GSA!=GST){
+    if(GSA<GST){
+        local Mul = 1
+        if(GSA<0){Mul=3}
+        GSA=GSA+(GInc*Mul)
+    }
+    if(GSA>GST){
+        local Mul = 1
+        if(GSA>0){Mul=3}
+        GSA=GSA-(GInc*Mul)
+    }
+}
+
+if(HSA!=HST){
+    if(HSA<HST){
+        local Mul = 1
+        if(HSA<0){Mul=3}
+        HSA=HSA+(HInc*Mul)
+    }
+    if(HSA>HST){
+        local Mul = 1
+        if(HSA>0){Mul=3}
+        HSA=HSA-(HInc*Mul)
+    }
+}
+
+if(CSA!=CST){
+    if(CSA<CST){
+        local Mul = 1
+        if(CSA<0){Mul=3}
+        CSA=CSA+(CInc*Mul)
+    }
+    if(CSA>CST){
+        local Mul = 1
+        if(CSA>0){Mul=3}
+        CSA=CSA-(CInc*Mul)
+    }
+}
+if(floor(Hoist:vel())|(GST|HST|CST)|(GSA|HSA|CSA)){
+timer("move",MoveTime)
+}
+}#End control loops
+
+#Loop for movement
+if(clk("move")){
+    for(II=1,4){hslFade(Locator[II,number])}
+    #For loops to rotate wheels
+    for(I=1,WheelsG:count()){
+        holoAng(WheelsG[I,number],holoEntity(WheelsG[I,number]):toWorld(ang(0,-GSA*4.75,0)))
+    }
+    for(I=1,WheelsH:count()){
+        holoAng(WheelsH[I,number],holoEntity(WheelsH[I,number]):toWorld(ang(0,-HSA*4.75,0)))
+    }
+#Position handling for each moving part
+holoPos(GantryH,holoEntity(GantryH):toWorld(vec(GSA,0,0)))
+Gantry:setAng(Base:angles())
+Hoist:setAng(Base:angles())
+Gantry:setPos(Gantry:toWorld(vec(GSA,HSA,0)))
+Hoist:setPos(Hoist:toWorld(vec(GSA,HSA,CSA)))
+}
+#Follow up checks for the key functions
+if(clk("key")){Check=1}
+if(clk("keyG")){CheckG=1}
+if(clk("keyH")){CheckH=1}
+if(clk("keyC")){CheckC=1}
+
+if(Debug){print(keyClkPressed())}
+#Loop for who is driving, acts as pod controller
+if(clk("driver")){
+    Hoist:propFreeze(1)
+    if(changed(Pod:driver())){
+        Hoist:propFreeze(1)
+        Gantry:propFreeze(1)
+        if(Pod:driver():isValid()){
+        print("Driver: "+Pod:driver():name())
+        runOnKeys(Pod:driver(),1)
+        Pod:parentTo(Gantry)
+        }
+        else{
+        Pod:deparent()
+        weld(Pod,Gantry)
+        runOnKeys(players(),0)
+        print("No Driver")
+        }
+        for(I=1,players():count()){if(players()[I,entity]!=Pod:driver()){for(II=1,4){holoVisible(Locator[II,number],players()[I,entity],0)}}
+        else{for(II=1,4){holoVisible(Locator[II,number],players()[I,entity],1)}}
+        }
+    }
+timer("driver",1000)
+}
+W=ops()
+#Runs end-stop sounds.
+if(clk("clang")){soundVolume(0,1) Pod:driver():soundPlay(0,3,"EpicMetal.ImpactSoft")}
