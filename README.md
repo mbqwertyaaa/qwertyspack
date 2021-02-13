@@ -1,6 +1,10 @@
 # qwertyspack
 Pack of public e2s  
 ## intermodal/  
+### Gantry Crane  
+- Scalable crane gantry and track system. You can change the travel distance for each axis.
+- Controls can be customized.
+- Has sounds.
 ### Container Scheme  
 - All of Magnum's, Patman's, and Caloco's container textures.
 - Automatically choose between schemes.
@@ -8,6 +12,7 @@ Pack of public e2s
 ### Wellcar loader  
 - Load containers onto one of Magnum's wellcars.
 - Controls can be customized.  
+- Has sounds.
 ## tSG and qwerty's Christmas Lights!
 ### Major Features:
 - Highly customizable string lights (not actual lights) that you can use on your coaches for a festive flair.  
