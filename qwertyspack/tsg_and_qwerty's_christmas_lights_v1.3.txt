@@ -1,0 +1,580 @@
+@name tSG and qwerty's Christmas Lights v1.3
+@inputs On Sequence1 Sequence2 FlagRG FlagRGYB FlagY FlagDisableShading FlagEnd FlagOtherEnd
+@outputs Flag
+@persist Step StepAcc X A B Spawned [TableR TableG TableY TableB TableS]:array [StrandM LightM]:string
+@persist [StrandCol Ron Rof Gon Gof Yon Yof Bon Bof Won Wof LightBaseScale LightBulbScale]:vector
+@persist StrandScale Scale LightNum LightBaseH LightBulbH Timing AngMax AngMin Length LightGap Help:array Command:string Parts:array 
+@persist HelpIndex Vnum:string P2m:entity [TableScale]:table 
+@persist RGYB [MeshE MeshP MeshA]:table
+@persist [StrandP2m RedP2m GreenP2m YellowP2m BlueP2m]:entity
+#[                        ////  Changelog ////
+v1.3
+    + Added automatic p2m.
+    - Ability to make manual meshes.
+    - Holo strand
+    / FlagDisableShading only affects shadow casting & a slight color difference (which doesn't seem to work on p2m).
+    / Updated help commands to be more relevant. Just in case you can't read the info below.
+v1.23
+    - Removed snapping lights to strand mesh
+v1.22
+    + Fixed bug that broke colored lights in generate mode.
+v1.21
+    + Fixed bug with duped p2m versions erroring at runtime.
+v1.2
+    + Link to github: https://github.com/mbqwertyaaa/qwertyspack
+    + Added help dialogue.
+    + Ability to p2m the entire strand manually. Use the .h command to view the help dialogue.
+    / Spawning timer decreased from 1000ms to 100ms.
+v1.1
+    + Scaling factor to change overall scale.
+    + Optimisation: If Sequences are not flagged (wired), the interval stops. Previously Timing was just set extremely high.
+    + Default values in comments.
+    / Spawning timer increased from 500ms to 1000ms.
+]#
+#[Inputs:
+    On: On.
+    Sequence1: Alternating on and off, every other light.
+    Sequence2: Only for RGYB. Combine with Sequence 1 and you get the inverse of this sequence.
+Flags:
+    Wire one of the color inputs to the Flag output, then reset the e2.
+    FlagRG:   Red and Green lights.
+    FlagRGYB: Red, Green, Yellow, and Blue lights. 
+    FlagY:    White lights.
+    FlagDisableShading: Turn all inputs off, then change this.
+    FlagEnd moves one end of the strand to the e2.
+    Reset the e2 after changing any flags.
+]#
+if(first()|duped()|dupefinished()){
+#Customize these variables
+#Overall Scale
+Scale=1
+#Total Length in Hammer Units, centered.
+Length=350 #Default: 250
+
+#Amount of bow or sag in the strand. 0 is none, 0.25 is a lot.
+Bow=0.15 #Default: 0.15
+#Light gap/spacing. This will change with the bow and length variables. Just play with it to get it right.
+LightGap=3.5 #Default: 3.5
+
+#Light sequence timing in seconds. Keep it above 1.5.
+Timing=1.5 #Default: 1.5
+
+#Angle Randomizer. AngMin can be set to 0 to have one side flat.
+AngMax=45 #Default: 45
+AngMin=-AngMax #Default: -AngMax
+
+#Strand customization:
+StrandM="models/proppertextures/acrylic_metal1_grimey" #Default: "models/proppertextures/acrylic_metal1_grimey"
+StrandCol=vec(26,102,42) #Default: vec(26,102,42)
+StrandScale = 0.3 #Default: 0.3
+
+#Light base customization:
+LightBaseScale=vec(0.5) #Default: vec(0.5)
+LightBaseH=3 #Default: 3
+
+#Light bulb customization:
+LightM="models/proppertextures/acrylic"
+LightBulbScale=vec(0.15,0.15,0.5) #Default: vec(0.15,0.15,0.5)
+LightBulbH=1.5 #Default: 1.5
+
+#Light Colors. The color for OFF is generated from the respective ON color, but feel free to change that. 
+OfSet=170 if(FlagDisableShading){OnSet=20}else{OnSet=-20}
+Ron = vec(230,12,12)+OnSet
+Rof = Ron-OfSet
+Gon = vec(12,230,12)+OnSet
+Gof = Gon-OfSet
+Yon = vec(230,161,21)+OnSet
+Yof = Yon-OfSet
+Bon = vec(15,115,230)+OnSet
+Bof = Bon-OfSet
+Won = vec(230,206,129)+OnSet
+Wof = vec(64,57,43)
+
+#Do not change anything past this line.
+
+Vnum="1.3"
+Flag=1
+if(FlagOtherEnd){
+    FlagEnd=-1
+}
+if(entity():parent()){
+    entity():setAlpha(0)
+}
+if(!entity():parent()){
+    entity():setAlpha(255)
+}
+Step=0.05 #Step for making the strands.
+StepAcc=-Step #
+Length=Length*Scale
+Bow=Length*Bow #Scales the bow amount from length
+Timing=Timing*1000 #Calculates from seconds to miliseconds
+
+    print("tSG and qwerty's Christmas Lights v"+Vnum+" is running in p2m mode.")
+
+
+Ron=clamp(Ron,vec(0),vec(255))
+Rof=clamp(Rof,vec(0),vec(255))
+Gon=clamp(Gon,vec(0),vec(255))
+Gof=clamp(Gof,vec(0),vec(255))
+Yon=clamp(Yon,vec(0),vec(255))
+Yof=clamp(Yof,vec(0),vec(255))
+Bon=clamp(Bon,vec(0),vec(255))
+Bof=clamp(Bof,vec(0),vec(255))
+Won=clamp(Won,vec(0),vec(255))
+Wof=clamp(Wof,vec(0),vec(255))
+
+
+#if(FlagP2m){
+    Help = array(" ",
+    "Inputs:",
+    "On: On.",
+    "Sequence1: Alternating on and off, every other light.",
+    "Sequence2: Only for RGYB. Combine with Sequence 1 and you get the inverse of this sequence.",
+    "Flags:",
+    "Wire one of the color inputs to the Flag output, then reset the e2.",
+    "FlagRG:   Red and Green lights.",
+    "FlagRGYB: Red, Green, Yellow, and Blue lights.",
+    "FlagY:    White lights.",
+    "FlagDisableShading: Turn all inputs off, then change this.",
+    "FlagEnd moves one end of the strand to the e2.",
+    "Reset the e2 after changing any flags.",
+        "")
+runOnChat(1)
+TableR=array()
+TableG=array()
+TableY=array()
+TableB=array()
+TableS=array()
+TableScale=table()
+MeshP=table()
+MeshA=table()
+
+
+
+holoCreate(1)
+holoParent(1,entity())
+holoPos(1,entity():toWorld(vec((Length/2)+(Length/2)*FlagEnd,0,0)))
+holoAng(1,entity():toWorld(ang(0,0,0)))
+TableScale:pushVector(vec(0))
+
+holoCreate(2)
+holoParent(2,entity())
+holoPos(2,entity():toWorld(vec((-Length/2)+(Length/2)*FlagEnd,0,0)))
+holoAng(2,entity():toWorld(ang(0,0,0)))
+TableScale:pushVector(vec(0))
+
+holoCreate(3)
+holoParent(3,entity())
+holoPos(3,entity():toWorld(vec((Length/2)*FlagEnd,0,-Bow)))
+holoAng(3,entity():toWorld(ang(0,0,0)))
+TableScale:pushVector(vec(0))
+holoAlpha(1,255)
+holoAlpha(2,255)
+holoAlpha(3,255)#models/weapons/c_models/c_flamethrower/c_flamethrower_festivizer.mdl
+X=3
+
+#}
+#Sequence functions, and on/off functions below them
+    if(FlagRG){
+        StrandP2m:p2mSetMaterial(StrandM)
+        StrandP2m:p2mSetColor(StrandCol)
+        RedP2m:p2mSetMaterial(LightM)
+        RedP2m:p2mSetColor(Rof)
+        GreenP2m:p2mSetMaterial(LightM)
+        GreenP2m:p2mSetColor(Gof)
+        timer("Spawn",250)
+    }
+    elseif(FlagRGYB){
+        StrandP2m:p2mSetMaterial(StrandM)
+        StrandP2m:p2mSetColor(StrandCol)
+        RedP2m:p2mSetMaterial(LightM)
+        RedP2m:p2mSetColor(Rof)
+        GreenP2m:p2mSetMaterial(LightM)
+        GreenP2m:p2mSetColor(Gof)
+        YellowP2m:p2mSetMaterial(LightM)
+        YellowP2m:p2mSetColor(Yof)
+        BlueP2m:p2mSetMaterial(LightM)
+        BlueP2m:p2mSetColor(Bof)
+        timer("Spawn",250)
+    }
+    elseif(FlagY){
+        StrandP2m:p2mSetMaterial(StrandM)
+        StrandP2m:p2mSetColor(StrandCol)
+        RedP2m:p2mSetMaterial(LightM)
+        RedP2m:p2mSetColor(Wof)
+        GreenP2m:p2mSetMaterial(LightM)
+        GreenP2m:p2mSetColor(Wof)
+        timer("Spawn",250)
+    }
+    else{holoDeleteAll() error("No color pattern selected. Please wire FlagRG, FlagRGYB, or FlagY.")
+        }
+function void seqRG(A,Seq1,L1:entity,L2:entity){
+    if(A==1){
+            L1:p2mSetColor(Seq1? Ron : Rof)
+            L2:p2mSetColor(Gof)
+    }
+    if(A==0){
+            L1:p2mSetColor(Rof)
+            L2:p2mSetColor(Seq1? Gon : Gof)
+    }
+
+}
+function void rg(On,L1:entity,L2:entity){
+    
+        for(N=1,21){
+            L1:p2mSetColor(On ? Ron : Rof)
+            L2:p2mSetColor(On ? Gon : Gof)
+        }
+    
+}
+
+function void seq1RGYB(A,Seq1,L1:entity,L2:entity,L3:entity,L4:entity){
+    if(A==1){
+        for(N=1,11){
+            L1:p2mSetColor(Seq1? Ron : Rof)
+            L2:p2mSetColor(Gof)
+            L3:p2mSetColor(Seq1? Yon : Yof)
+            L4:p2mSetColor(Bof)
+        }
+    }
+    if(A==0){
+        for(N=1,11){
+            L1:p2mSetColor(Rof)
+            L2:p2mSetColor(Seq1? Gon : Gof)
+            L3:p2mSetColor(Yof)
+            L4:p2mSetColor(Seq1? Bon : Bof)
+        }
+    }
+
+}
+
+function void seq2RGYB(A,B,Seq1,L1:entity,L2:entity,L3:entity,L4:entity){
+    if(A==1&B==1){
+        for(N=1,11){
+            L1:p2mSetColor(Seq1? Ron : Rof)
+            L2:p2mSetColor(Gof)
+            L3:p2mSetColor(Yof)
+            L4:p2mSetColor(Bof)
+        }
+    }
+    if(A==0&B==1){
+        for(N=1,11){
+            L1:p2mSetColor(Rof)
+            L2:p2mSetColor(Seq1? Gon : Gof)
+            L3:p2mSetColor(Yof)
+            L4:p2mSetColor(Bof)
+        }
+    }
+    if(A==1&B==0){
+        for(N=1,11){
+            L1:p2mSetColor(Rof)
+            L2:p2mSetColor(Gof)
+            L3:p2mSetColor(Seq1? Yon : Yof)
+            L4:p2mSetColor(Bof)
+        }
+    }
+    if(A==0&B==0){
+        for(N=1,11){
+            L1:p2mSetColor(Rof)
+            L2:p2mSetColor(Gof)
+            L3:p2mSetColor(Yof)
+            L4:p2mSetColor(Seq1? Bon : Bof)
+        }
+    }
+
+}
+function void seq3RGYB(A,B,Seq1,L1:entity,L2:entity,L3:entity,L4:entity){
+    if(A==1&B==1){
+        for(N=1,11){
+            L1:p2mSetColor(Rof)
+            L2:p2mSetColor(Seq1? Gon : Gof)
+            L3:p2mSetColor(Seq1? Yon : Yof)
+            L4:p2mSetColor(Seq1? Bon : Bof)
+        }
+    }
+    if(A==0&B==1){
+        for(N=1,11){
+            L1:p2mSetColor(Seq1? Ron : Rof)
+            L2:p2mSetColor(Gof)
+            L3:p2mSetColor(Seq1? Yon : Yof)
+            L4:p2mSetColor(Seq1? Bon : Bof)
+        }
+    }
+    if(A==1&B==0){
+        for(N=1,11){
+            L1:p2mSetColor(Seq1? Ron : Rof)
+            L2:p2mSetColor(Seq1? Gon : Gof)
+            L3:p2mSetColor(Yof)
+            L4:p2mSetColor(Seq1? Bon : Bof)
+        }
+    }
+    if(A==0&B==0){
+        for(N=1,11){
+            L1:p2mSetColor(Seq1? Ron : Rof)
+            L2:p2mSetColor(Seq1? Gon : Gof)
+            L3:p2mSetColor(Seq1? Yon : Yof)
+            L4:p2mSetColor(Bof)
+        }
+    }
+
+}
+
+function void rgyb(On,L1:entity,L2:entity,L3:entity,L4:entity){
+    
+        for(N=1,11){
+            L1:p2mSetColor(On ? Ron : Rof)
+            L2:p2mSetColor(On ? Gon : Gof)
+            L3:p2mSetColor(On ? Yon : Yof)
+            L4:p2mSetColor(On ? Bon : Bof)
+        }
+    
+}
+
+function void seqY(A,Seq1,L1:entity,L2:entity){
+    if(A==1){
+            L1:p2mSetColor(Seq1? Won : Wof)
+            L2:p2mSetColor(Wof)
+    }
+    if(A==0){
+            L1:p2mSetColor(Wof)
+            L2:p2mSetColor(Seq1? Won : Wof)
+    }
+
+}
+function void yy(On,L1:entity,L2:entity){
+    
+        for(N=1,21){
+            L1:p2mSetColor(On ? Won : Wof)
+            L2:p2mSetColor(On ? Won : Wof)
+        }
+    
+}
+function entity p2mC(Parent:entity, Pos:vector, Angle:angle, Scale:number, UVS:number, Color:vector, Material:string){
+    local P2M=p2mCreate(Parent:toWorld(vec()),Parent:toWorld(ang()),UVS)
+    P2M:p2mSetColor(Color)
+    P2M:p2mSetMaterial(Material)
+    P2M:p2mSetMeshScale(Scale)
+    P2M:p2mSetParent(Parent)
+    return P2M
+}
+function void p2mB(P2M:entity){
+    P2M:p2mBuild()
+}
+function void p2m(P2M:entity, Pos:vector, Angle:angle, Scale:vector, Model:string){
+P2M:p2mPushModel(Model,entity():toLocal(Pos),entity():toLocal(Angle),Scale)
+}
+
+StrandP2m=p2mC(entity(), vec(0), ang(0), 1, 1, StrandCol, StrandM)
+RedP2m=p2mC(entity(), vec(0), ang(0), 1, 1, Rof, LightM)
+GreenP2m=p2mC(entity(), vec(0), ang(0), 1, 1, Gof, LightM)
+YellowP2m=p2mC(entity(), vec(0), ang(0), 1, 1, Yof, LightM)
+BlueP2m=p2mC(entity(), vec(0), ang(0), 1, 1, Bof, LightM)
+}
+
+#Generation loop
+if(clk("Spawn")&StepAcc<1){
+StepAcc=StepAcc+Step
+X=X+1
+RGYB++
+Prev= bezier(holoEntity(1):pos(),holoEntity(3):pos(),holoEntity(2):pos(),StepAcc+Step)#  
+Next= bezier(holoEntity(1):pos(),holoEntity(3):pos(),holoEntity(2):pos(),StepAcc-Step)#  
+CurvePos = bezier(holoEntity(1):pos(),holoEntity(3):pos(),holoEntity(2):pos(),StepAcc)#  
+holoCreate(X)
+holoPos(X,CurvePos)
+holoAng(X,(((Prev) - (Next)):toAngle() *1)+ang(0,0,0)) 
+holoAlpha(X,0)
+holoScale(X,vec(0))
+MeshP[X,vector]=CurvePos
+MeshA[X,angle]=(((Prev) - (Next)):toAngle() *1)+ang(0,0,0)
+MeshE[X,entity]=holoEntity(X)
+TableScale:pushVector(vec(0))
+
+X++
+p2m(StrandP2m,MeshP[X-1,vector],MeshE[X-1,entity]:toWorld(ang(0,90,90)),
+vec(StrandScale*Scale,StrandScale*Scale,(holoEntity(1):pos():distance(holoEntity(3):pos()))*0.0085),
+"models/sprops/cylinders/size_2/cylinder_3x12.mdl")
+MeshP[X,vector]=MeshP[X-1,vector]
+MeshA[X,angle]=MeshE[X-1,entity]:toWorld(ang(0,90,90))
+TableS:pushString((X):toString())
+TableScale:pushVector(vec(StrandScale*Scale,StrandScale*Scale,(holoEntity(1):pos():distance(holoEntity(3):pos()))*0.0085))
+
+
+X++
+local Ang = randint(AngMin,AngMax)
+p2m(StrandP2m,MeshE[X-2,entity]:toWorld(vec(-LightGap,sin(Ang)*LightBaseH,-cos(Ang)*LightBaseH)*Scale),
+MeshE[X-2,entity]:toWorld(ang(0,0,Ang)),
+LightBaseScale*Scale,
+"models/sprops/misc/domes/size_0/dome_3x6.mdl")
+MeshP[X,vector]=MeshE[X-2,entity]:toWorld(vec(-LightGap,sin(Ang)*LightBaseH,-cos(Ang)*LightBaseH)*Scale)
+MeshA[X,angle]=MeshE[X-2,entity]:toWorld(ang(0,0,Ang))
+
+TableS:pushString((X):toString())
+TableScale:pushVector(LightBaseScale*Scale)
+
+
+X++
+local Ang = randint(AngMin,AngMax)
+p2m(StrandP2m,MeshE[X-3,entity]:toWorld(vec(LightGap,sin(Ang)*LightBaseH,-cos(Ang)*LightBaseH)*Scale),
+MeshE[X-3,entity]:toWorld(ang(0,0,Ang)),
+LightBaseScale*Scale,
+"models/sprops/misc/domes/size_0/dome_3x6.mdl")
+MeshP[X,vector]=MeshE[X-3,entity]:toWorld(vec(LightGap,sin(Ang)*LightBaseH,-cos(Ang)*LightBaseH)*Scale)
+MeshA[X,angle]=MeshE[X-3,entity]:toWorld(ang(0,0,Ang))
+MeshE[X,entity]=entity()
+MeshE[X,entity]["Position",vector]=MeshP[X,vector]
+MeshE[X,entity]["Angle",angle]=MeshA[X,angle]
+TableS:pushString((X):toString())
+TableScale:pushVector(LightBaseScale*Scale)
+
+
+
+X++
+TableScale:pushVector(LightBulbScale*Scale)
+if(FlagRG|FlagY){
+    
+    p2m(RedP2m,(MeshP[X-2,vector]+toWorld(vec(0,0,-LightBulbH),ang(),vec(),MeshA[X-2,angle]))*Scale,
+    MeshA[X-2,angle],
+    LightBulbScale*Scale,
+    "models/sprops/geometry/sphere_9.mdl")
+    TableR:pushString((X):toString())
+}
+elseif(FlagRGYB){
+    if(RGYB%2==0){ #Detects if the index is even or odd
+        p2m(RedP2m,(MeshP[X-2,vector]+toWorld(vec(0,0,-LightBulbH),ang(),vec(),MeshA[X-2,angle]))*Scale,
+    MeshA[X-2,angle],
+    LightBulbScale*Scale,
+    "models/sprops/geometry/sphere_9.mdl")
+    TableR:pushString((X):toString())
+    }
+    else{
+        p2m(YellowP2m,(MeshP[X-2,vector]+toWorld(vec(0,0,-LightBulbH),ang(),vec(),MeshA[X-2,angle]))*Scale,
+    MeshA[X-2,angle],
+    LightBulbScale*Scale,
+    "models/sprops/geometry/sphere_9.mdl")
+    TableY:pushString((X):toString())
+    }
+}
+
+X++
+TableScale:pushVector(LightBulbScale*Scale)
+if(FlagRG|FlagY){
+    p2m(GreenP2m,(MeshP[X-2,vector]+toWorld(vec(0,0,-LightBulbH),ang(),vec(),MeshA[X-2,angle]))*Scale,
+    MeshA[X-2,angle],
+    LightBulbScale*Scale,
+    "models/sprops/geometry/sphere_9.mdl")
+    TableG:pushString((X):toString())
+}
+elseif(FlagRGYB){
+    if(RGYB%2==0){ #Detects if the index is even or odd
+        p2m(GreenP2m,(MeshP[X-2,vector]+toWorld(vec(0,0,-LightBulbH),ang(),vec(),MeshA[X-2,angle]))*Scale,
+    MeshA[X-2,angle],
+    LightBulbScale*Scale,
+    "models/sprops/geometry/sphere_9.mdl")
+    TableG:pushString((X):toString())
+    }
+    else{
+        p2m(BlueP2m,(MeshP[X-2,vector]+toWorld(vec(0,0,-LightBulbH),ang(),vec(),MeshA[X-2,angle]))*Scale,
+    MeshA[X-2,angle],
+    LightBulbScale*Scale,
+    "models/sprops/geometry/sphere_9.mdl")
+    TableB:pushString((X):toString())
+        }
+}
+
+timer("Spawn",100)
+}
+if(StepAcc==1&Spawned==0){Spawned=1
+        p2mB(StrandP2m)
+        holoDeleteAll()
+    
+    if(FlagRG){
+        p2mB(RedP2m)
+        p2mB(GreenP2m)
+        print("Strand: "+TableS:count())
+        print("Red: "+TableR:count())
+        print("Green: "+TableG:count())
+        print("Total in p2m: "+(TableS:count()+TableR:count()+TableG:count()):toString())
+        print("Total Ents: 3")
+    }
+    elseif(FlagRGYB){
+        p2mB(RedP2m)
+        p2mB(GreenP2m)
+        p2mB(YellowP2m)
+        p2mB(BlueP2m)
+        print("Strand: "+TableS:count())
+        print("Red 1/4: "+TableR:count())
+        print("Green 2/4: "+TableG:count())
+        print("Yellow 3/4: "+TableY:count())
+        print("Blue 4/4: "+TableB:count())
+        print("Total in p2m: "+(TableS:count()+TableR:count()+TableG:count()+TableY:count()+TableB:count()):toString())
+        print("Total Ents: 5")
+    }
+    elseif(FlagY){
+        p2mB(RedP2m)
+        p2mB(GreenP2m)
+        print("Strand: "+TableS:count())
+        print("White 1/2: "+TableR:count())
+        print("White 2/2: "+TableG:count())
+        print("Total in p2m: "+(TableS:count()+TableR:count()+TableG:count()):toString())
+        print("Total Ents: 3")
+    }
+    }
+
+if(Sequence1|Sequence2){interval(Timing)}
+if(Spawned==1){
+    A=!A if(A){B=!B}
+    if(FlagRG){ #Select different sequences based on the flag color
+        if(Sequence1){
+            seqRG(A,On,RedP2m,GreenP2m)
+        }
+        else{
+            rg(On,RedP2m,GreenP2m)
+        }
+    }
+    if(FlagRGYB){ #Select different sequences based on the flag color
+    
+        if(Sequence1&!Sequence2){
+            seq1RGYB(A,On,RedP2m,GreenP2m,YellowP2m,BlueP2m)
+        }
+        elseif(!Sequence1&Sequence2){
+            seq3RGYB(A,B,On,RedP2m,GreenP2m,YellowP2m,BlueP2m)
+        }
+        elseif(Sequence1&Sequence2){
+             seq2RGYB(A,B,On,RedP2m,GreenP2m,YellowP2m,BlueP2m)
+        }
+        else{
+            rgyb(On,RedP2m,GreenP2m,YellowP2m,BlueP2m)
+        }
+    }
+    if(FlagY){ #Select different sequences based on the flag color
+        if(Sequence1){
+            seqY(A,On,RedP2m,GreenP2m)
+        }
+        else{
+            yy(On,RedP2m,GreenP2m)
+        }
+    }    
+
+}
+if(chatClk(owner())){
+    Command=owner():lastSaid()
+    if(Command:left(1)=="."){
+        Parts=Command:sub(2):explode(" ")
+        hideChat(1)
+    if(Parts[1,string]=="h"|Parts[1,string]=="help"){
+        timer("help",10)
+    }
+    }
+}
+if(clk("help")){#Prints the help array. It will wait to print if it has run out of times to print in the current second
+    if(playerCanPrint()){
+        print(Help[HelpIndex,string])
+        if(HelpIndex!=Help:count()+1){
+            HelpIndex++
+            timer("help",100)
+        }
+        else{HelpIndex=1}
+    }
+    else{timer("help",100)}
+}
+
