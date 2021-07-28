@@ -15,8 +15,8 @@ Pack of public e2s
 - Has sounds.
 ## tSG and qwerty's Christmas Lights!
 ### Major Features:
-- Highly customizable string lights (not actual lights) that you can use on your coaches for a festive flair.  
-- Manual method of [prop2meshing](https://github.com/shadowscion/Prop2Mesh)! Please use this feature, otherwise it is 129 holos for one strand, and I know you can't restrict yourself to just one strand.
+- Highly customizable string lights (not actual lights) that you can use on your coaches or buildings for a festive flair.  
+- Automatic method of [prop2meshing](https://github.com/shadowscion/Prop2Mesh)!
 ### 3 color options:  
 - Red and Green  
 - Red, Green, Yellow, and Blue  
@@ -24,6 +24,4 @@ Pack of public e2s
 ### There are also a couple of sequences that they can run:
 - Every-other light blinks.
 - 3 moving lights with a gap, and 1 moving light with a 3 light gap.
-### Upcoming Features:
- - Commands to generate the p2m mesh automatically.
 
